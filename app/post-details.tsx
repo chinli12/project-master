@@ -706,7 +706,7 @@ export default function PostDetailsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#111827',
+        backgroundColor: '#F3F4F6',
         justifyContent: 'center',
     },
     header: {
@@ -715,7 +715,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
         paddingVertical: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#374151',
+        borderBottomColor: '#E5E7EB',
     },
     backButton: {
         padding: 8,
@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 20,
         fontFamily: 'Poppins-Bold',
-        color: '#FFFFFF',
+        color: '#1F2937',
         marginLeft: 16,
     },
     postCard: {
@@ -746,17 +746,17 @@ const styles = StyleSheet.create({
     authorName: {
         fontSize: 16,
         fontFamily: 'Poppins-SemiBold',
-        color: '#F9FAFB',
+        color: '#1F2937',
     },
     timestamp: {
         fontSize: 14,
         fontFamily: 'Inter-Regular',
-        color: '#9CA3AF',
+        color: '#6B7280',
     },
     postText: {
         fontSize: 16,
         fontFamily: 'Inter-Regular',
-        color: '#D1D5DB',
+        color: '#1F2937',
         lineHeight: 24,
         marginBottom: 16,
     },
@@ -771,9 +771,9 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
         paddingVertical: 12,
         borderTopWidth: 1,
-        borderTopColor: '#374151',
+        borderTopColor: '#E5E7EB',
         borderBottomWidth: 1,
-        borderBottomColor: '#374151',
+        borderBottomColor: '#E5E7EB',
     },
     engagementActions: {
         flexDirection: 'row',
@@ -788,12 +788,12 @@ const styles = StyleSheet.create({
     engagementButtonText: {
         fontSize: 15,
         fontFamily: 'Poppins-Medium',
-        color: '#FFFFFF',
+        color: '#1F2937',
     },
     engagementText: {
         fontSize: 15,
         fontFamily: 'Inter-Regular',
-        color: '#9CA3AF',
+        color: '#6B7280',
     },
     likedText: {
         color: '#F472B6',
@@ -815,17 +815,17 @@ const styles = StyleSheet.create({
         padding: 12,
         borderRadius: 16,
         flex: 1,
-        backgroundColor: '#374151',
+        backgroundColor: '#FFFFFF',
     },
     commentAuthor: {
         fontSize: 14,
         fontFamily: 'Poppins-SemiBold',
-        color: '#F9FAFB',
+        color: '#1F2937',
     },
     commentText: {
         fontSize: 15,
         fontFamily: 'Inter-Regular',
-        color: '#D1D5DB',
+        color: '#1F2937',
     },
     commentActions: {
       flexDirection: 'row',
@@ -835,7 +835,7 @@ const styles = StyleSheet.create({
     commentActionText: {
       fontSize: 13,
       fontFamily: 'Inter-Medium',
-      color: '#9CA3AF',
+      color: '#6B7280',
     },
     replyCommentContainer: {
       marginLeft: 40, // Indent replies
@@ -845,7 +845,7 @@ const styles = StyleSheet.create({
     replyingToContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#374151',
+      backgroundColor: '#E5E7EB',
       padding: 8,
       borderRadius: 8,
       marginBottom: 8,
@@ -853,7 +853,7 @@ const styles = StyleSheet.create({
       justifyContent: 'space-between',
     },
     replyingToText: {
-      color: '#D1D5DB',
+      color: '#1F2937',
       fontFamily: 'Inter-Regular',
       fontSize: 14,
     },
@@ -862,13 +862,13 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start', // Align items to start
         padding: 16,
         borderTopWidth: 1,
-        borderTopColor: '#374151',
-        backgroundColor: '#1F2937',
+        borderTopColor: '#E5E7EB',
+        backgroundColor: '#FFFFFF',
     },
     commentInput: {
         flex: 1,
-        backgroundColor: '#374151',
-        color: '#FFFFFF',
+        backgroundColor: '#F3F4F6',
+        color: '#1F2937',
         paddingVertical: 12,
         paddingHorizontal: 16,
         borderRadius: 24,
@@ -877,7 +877,7 @@ const styles = StyleSheet.create({
         fontFamily: 'Inter-Regular',
     },
     sendButton: {
-        backgroundColor: '#A78BFA',
+        backgroundColor: '#3B82F6',
         paddingVertical: 12,
         paddingHorizontal: 24,
         borderRadius: 24,
@@ -917,7 +917,7 @@ const styles = StyleSheet.create({
     locationContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#374151',
+        backgroundColor: '#E5E7EB',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 12,
@@ -926,7 +926,7 @@ const styles = StyleSheet.create({
     },
     locationDisplayText: {
         fontSize: 13,
-        color: '#A78BFA',
+        color: '#3B82F6',
         fontWeight: '500',
         marginLeft: 4,
     },
@@ -967,7 +967,7 @@ const styles = StyleSheet.create({
       backgroundColor: 'rgba(0, 0, 0, 0.6)',
     },
     optionsModalSheet: {
-      backgroundColor: '#1F2937',
+      backgroundColor: '#FFFFFF',
       borderTopLeftRadius: 24,
       borderTopRightRadius: 24,
       paddingTop: 8,
@@ -982,7 +982,7 @@ const styles = StyleSheet.create({
     modalHandle: {
       width: 40,
       height: 4,
-      backgroundColor: '#4B5563',
+      backgroundColor: '#D1D5DB',
       borderRadius: 2,
       alignSelf: 'center',
       marginBottom: 20,
@@ -994,7 +994,7 @@ const styles = StyleSheet.create({
       paddingBottom: 20,
       marginBottom: 12,
       borderBottomWidth: 1,
-      borderBottomColor: '#374151',
+      borderBottomColor: '#E5E7EB',
     },
     previewAvatar: {
       width: 40,
@@ -1008,12 +1008,12 @@ const styles = StyleSheet.create({
     previewAuthor: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#F9FAFB',
+      color: '#1F2937',
       marginBottom: 2,
     },
     previewText: {
       fontSize: 14,
-      color: '#9CA3AF',
+      color: '#6B7280',
       lineHeight: 18,
     },
     optionsList: {
@@ -1026,7 +1026,7 @@ const styles = StyleSheet.create({
       paddingHorizontal: 16,
       borderRadius: 16,
       marginBottom: 12,
-      backgroundColor: '#374151',
+      backgroundColor: '#F3F4F6',
     },
     optionIconContainer: {
       width: 48,
@@ -1042,12 +1042,12 @@ const styles = StyleSheet.create({
     optionTitle: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#F9FAFB',
+      color: '#1F2937',
       marginBottom: 2,
     },
     optionSubtitle: {
       fontSize: 14,
-      color: '#9CA3AF',
+      color: '#6B7280',
       lineHeight: 18,
     },
 });

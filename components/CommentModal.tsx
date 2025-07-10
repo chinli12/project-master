@@ -128,7 +128,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: 'Poppins-Bold',
-    color: '#FFFFFF',
+    color: '#1F2937',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -161,17 +161,17 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 16,
     flex: 1,
-    backgroundColor: '#374151',
+    backgroundColor: '#F3F4F6',
   },
   commentAuthor: {
     fontSize: 14,
     fontFamily: 'Poppins-SemiBold',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   commentText: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#D1D5DB',
+    color: '#1F2937',
   },
   commentInputContainer: {
     flexDirection: 'row',
@@ -180,15 +180,15 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    backgroundColor: '#374151',
-    color: '#FFFFFF',
+    backgroundColor: '#F3F4F6',
+    color: '#1F2937',
     padding: 16,
     borderRadius: 24,
     marginRight: 16,
     fontSize: 16,
   },
   sendButton: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#3B82F6',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 24,

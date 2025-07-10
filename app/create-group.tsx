@@ -605,7 +605,7 @@ export default function CreateGroupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
@@ -620,7 +620,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   progressContainer: {
     paddingHorizontal: 24,
@@ -628,18 +628,18 @@ const styles = StyleSheet.create({
   },
   progressBar: {
     height: 8,
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#3B82F6',
     borderRadius: 4,
   },
   progressText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
     textAlign: 'right',
     marginTop: 4,
   },
@@ -662,12 +662,12 @@ const styles = StyleSheet.create({
   stepTitle: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 8,
   },
   stepSubtitle: {
     fontSize: 16,
-    color: '#9CA3AF',
+    color: '#6B7280',
     lineHeight: 24,
   },
   inputContainer: {
@@ -675,7 +675,7 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     flexDirection: 'row',
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 12,
   },
@@ -689,12 +689,12 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputLabel: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 12,
     marginBottom: 4,
   },
   input: {
-    color: '#F9FAFB',
+    color: '#1F2937',
     fontSize: 16,
     paddingVertical: 4,
   },
@@ -703,7 +703,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   textArea: {
-    color: '#F9FAFB',
+    color: '#1F2937',
     fontSize: 16,
     minHeight: 80,
     textAlignVertical: 'top',
@@ -725,7 +725,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 16,
     marginTop: 16,
   },
@@ -736,7 +736,7 @@ const styles = StyleSheet.create({
   },
   categoryCard: {
     width: '48%',
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
@@ -745,15 +745,15 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   categoryCardSelected: {
-    borderColor: '#A78BFA',
-    backgroundColor: '#3730A3',
+    borderColor: '#3B82F6',
+    backgroundColor: '#DBEAFE',
   },
   categoryIcon: {
     fontSize: 24,
     marginBottom: 8,
   },
   categoryName: {
-    color: '#F9FAFB',
+    color: '#1F2937',
     fontWeight: '500',
     textAlign: 'center',
   },
@@ -761,34 +761,34 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   privacyOption: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 2,
-    borderColor: '#374151',
+    borderColor: '#E5E7EB',
   },
   privacyOptionSelected: {
-    borderColor: '#A78BFA',
-    backgroundColor: '#3730A3',
+    borderColor: '#3B82F6',
+    backgroundColor: '#DBEAFE',
   },
   privacyTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 4,
     marginLeft: 36,
     marginTop: -26,
   },
   privacyTitleSelected: {
-    color: '#A78BFA',
+    color: '#3B82F6',
   },
   privacyDescription: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginLeft: 36,
   },
   imagePickerContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     height: 200,
     justifyContent: 'center',
@@ -802,12 +802,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   imagePickerText: {
-    color: '#D1D5DB',
+    color: '#1F2937',
     fontSize: 16,
     fontWeight: '500',
   },
   imagePickerSubtext: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 12,
   },
   imagePreview: {
@@ -821,14 +821,14 @@ const styles = StyleSheet.create({
   imageButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
     gap: 8,
   },
   imageButtonText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontWeight: '600',
   },
   removeImageButton: {
@@ -851,7 +851,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   locationPickerButton: {
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
     padding: 8,
     borderRadius: 6,
     justifyContent: 'center',
@@ -866,22 +866,22 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 24,
-    backgroundColor: '#111827',
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#374151',
+    borderTopColor: '#E5E7EB',
   },
   prevButton: {
     padding: 16,
   },
   prevButtonText: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 16,
     fontWeight: '600',
   },
   nextButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#3B82F6',
     paddingVertical: 16,
     paddingHorizontal: 24,
     borderRadius: 30,

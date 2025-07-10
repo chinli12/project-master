@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -8,93 +8,64 @@ import {
   Alert,
   TextInput,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Plus, MapPin, Clock, Route, Calendar, Star, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'expo-router';
 
 const { width } = Dimensions.get('window');
+
+interface TripLocation {
+  id: string;
+  name: string;
+  address: string;
+  estimatedTime: string;
+  type: string;
+}
 
 interface TripPlan {
   id: string;
   title: string;
   date: string;
   duration: string;
-  locations: Array<{
-    id: string;
-    name: string;
-    address: string;
-    estimatedTime: string;
-    type: string;
-  }>;
+  locations: TripLocation[];
   totalDistance: string;
   difficulty: 'Easy' | 'Moderate' | 'Advanced';
 }
 
-const mockTripPlans: TripPlan[] = [
-  {
-    id: '1',
-    title: 'Historic Downtown Walking Tour',
-    date: 'Today',
-    duration: '3 hours',
-    totalDistance: '2.5 km',
-    difficulty: 'Easy',
-    locations: [
-      {
-        id: '1',
-        name: 'Cathedral Square',
-        address: '123 Main St',
-        estimatedTime: '45 min',
-        type: 'Historical',
-      },
-      {
-        id: '2',
-        name: 'Old Market',
-        address: '456 Market St',
-        estimatedTime: '30 min',
-        type: 'Cultural',
-      },
-      {
-        id: '3',
-        name: 'Heritage Museum',
-        address: '789 Heritage Ave',
-        estimatedTime: '60 min',
-        type: 'Museum',
-      },
-    ],
-  },
-  {
-    id: '2',
-    title: 'Riverside Nature & History',
-    date: 'Tomorrow',
-    duration: '2.5 hours',
-    totalDistance: '3.8 km',
-    difficulty: 'Moderate',
-    locations: [
-      {
-        id: '4',
-        name: 'Riverside Memorial',
-        address: '321 River Rd',
-        estimatedTime: '25 min',
-        type: 'Memorial',
-      },
-      {
-        id: '5',
-        name: 'Historic Bridge',
-        address: 'Bridge St',
-        estimatedTime: '20 min',
-        type: 'Architecture',
-      },
-    ],
-  },
-];
-
 export default function PlannerScreen() {
-  const [tripPlans, setTripPlans] = useState<TripPlan[]>(mockTripPlans);
+  const { user } = useAuth();
+  const router = useRouter();
+  const [tripPlans, setTripPlans] = useState<TripPlan[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [newTripTitle, setNewTripTitle] = useState('');
 
-  const deleteTripPlan = (id: string) => {
+  useEffect(() => {
+    if (user) {
+      fetchTripPlans();
+    }
+  }, [user]);
+
+  const fetchTripPlans = async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('trip_plans')
+      .select('*, trip_locations(*)')
+      .eq('user_id', user.id);
+
+    if (data) {
+      setTripPlans(data as TripPlan[]);
+    }
+    setLoading(false);
+  };
+
+  const deleteTripPlan = async (id: string) => {
     Alert.alert(
       'Delete Trip Plan',
       'Are you sure you want to delete this trip plan?',
@@ -103,23 +74,91 @@ export default function PlannerScreen() {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setTripPlans(plans => plans.filter(plan => plan.id !== id));
+          onPress: async () => {
+            const { error } = await supabase.from('trip_plans').delete().eq('id', id);
+            if (error) {
+              Alert.alert('Error', 'Failed to delete trip plan.');
+            } else {
+              fetchTripPlans();
+            }
           },
         },
       ]
     );
   };
 
-  const createNewTrip = () => {
+  const createNewTrip = async () => {
+    if (!user) {
+      Alert.alert('Error', 'You must be logged in to create a trip plan.');
+      return;
+    }
     if (!newTripTitle.trim()) {
       Alert.alert('Error', 'Please enter a trip title');
       return;
     }
 
-    Alert.alert('AI Trip Planner', 'AI will suggest locations based on your preferences. This feature is coming soon!');
-    setNewTripTitle('');
-    setShowCreateForm(false);
+    planTripWithGemini(newTripTitle);
+  };
+
+  const planTripWithGemini = async (title: string) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${process.env.EXPO_PUBLIC_GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{
+              text: `Plan a trip with the title "${title}". Provide a date, duration, total distance, difficulty (Easy, Moderate, or Advanced), and a list of locations with name, address, estimated time, and type. Return the response as a JSON object.`
+            }]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      const plan = JSON.parse(data.candidates[0].content.parts[0].text);
+
+      if (!user) {
+        Alert.alert('Error', 'You must be logged in to create a trip plan.');
+        return;
+      }
+      const { data: tripPlan, error } = await supabase
+        .from('trip_plans')
+        .insert({
+          user_id: user.id,
+          title: plan.title,
+          date: plan.date,
+          duration: plan.duration,
+          total_distance: plan.totalDistance,
+          difficulty: plan.difficulty,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const locations = plan.locations.map((location: TripLocation, index: number) => ({
+        ...location,
+        trip_plan_id: tripPlan.id,
+        order_index: index,
+      }));
+
+      const { error: locationsError } = await supabase.from('trip_locations').insert(locations);
+
+      if (locationsError) throw locationsError;
+
+      Alert.alert('Success', 'Trip plan created successfully.');
+      setNewTripTitle('');
+      setShowCreateForm(false);
+      fetchTripPlans();
+    } catch (error) {
+      console.error(error);
+      Alert.alert('Error', 'Failed to create trip plan with Gemini.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -178,106 +217,110 @@ export default function PlannerScreen() {
           </View>
         )}
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your Trip Plans</Text>
-            <Text style={styles.sectionSubtitle}>
-              {tripPlans.length} trip{tripPlans.length !== 1 ? 's' : ''} planned
-            </Text>
-          </View>
+        {loading ? (
+          <ActivityIndicator style={{ marginTop: 50 }} size="large" color="#FFFFFF" />
+        ) : (
+          <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Your Trip Plans</Text>
+              <Text style={styles.sectionSubtitle}>
+                {tripPlans.length} trip{tripPlans.length !== 1 ? 's' : ''} planned
+              </Text>
+            </View>
 
-          {tripPlans.map((trip) => (
-            <View key={trip.id} style={styles.tripCard}>
-              <View style={styles.tripHeader}>
-                <View style={styles.tripTitleRow}>
-                  <Text style={styles.tripTitle}>{trip.title}</Text>
-                  <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={() => deleteTripPlan(trip.id)}
-                  >
-                    <Trash2 size={16} color="#F87171" strokeWidth={2} />
-                  </TouchableOpacity>
-                </View>
-                
-                <View style={styles.tripMeta}>
-                  <View style={styles.metaItem}>
-                    <Calendar size={14} color="#9CA3AF" strokeWidth={2} />
-                    <Text style={styles.metaText}>{trip.date}</Text>
+            {tripPlans.map((trip) => (
+              <View key={trip.id} style={styles.tripCard}>
+                <View style={styles.tripHeader}>
+                  <View style={styles.tripTitleRow}>
+                    <Text style={styles.tripTitle}>{trip.title}</Text>
+                    <TouchableOpacity
+                      style={styles.deleteButton}
+                      onPress={() => deleteTripPlan(trip.id)}
+                    >
+                      <Trash2 size={16} color="#F87171" strokeWidth={2} />
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.metaItem}>
-                    <Clock size={14} color="#9CA3AF" strokeWidth={2} />
-                    <Text style={styles.metaText}>{trip.duration}</Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Route size={14} color="#9CA3AF" strokeWidth={2} />
-                    <Text style={styles.metaText}>{trip.totalDistance}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.difficultyContainer}>
-                  <View style={[
-                    styles.difficultyBadge,
-                    { backgroundColor: getDifficultyColor(trip.difficulty) + '20' }
-                  ]}>
-                    <Text style={[
-                      styles.difficultyText,
-                      { color: getDifficultyColor(trip.difficulty) }
-                    ]}>
-                      {trip.difficulty}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-
-              <View style={styles.locationsContainer}>
-                <Text style={styles.locationsTitle}>Stops ({trip.locations.length})</Text>
-                {trip.locations.map((location, index) => (
-                  <View key={location.id} style={styles.locationItem}>
-                    <View style={styles.locationNumber}>
-                      <Text style={styles.locationNumberText}>{index + 1}</Text>
+                  
+                  <View style={styles.tripMeta}>
+                    <View style={styles.metaItem}>
+                      <Calendar size={14} color="#9CA3AF" strokeWidth={2} />
+                      <Text style={styles.metaText}>{trip.date || 'N/A'}</Text>
                     </View>
-                    <View style={styles.locationDetails}>
-                      <Text style={styles.locationName}>{location.name}</Text>
-                      <Text style={styles.locationAddress}>{location.address}</Text>
-                      <View style={styles.locationMeta}>
-                        <View style={styles.locationTime}>
-                          <Clock size={12} color="#9CA3AF" strokeWidth={2} />
-                          <Text style={styles.locationTimeText}>{location.estimatedTime}</Text>
-                        </View>
-                        <View style={styles.locationType}>
-                          <Text style={styles.locationTypeText}>{location.type}</Text>
+                    <View style={styles.metaItem}>
+                      <Clock size={14} color="#9CA3AF" strokeWidth={2} />
+                      <Text style={styles.metaText}>{trip.duration || 'N/A'}</Text>
+                    </View>
+                    <View style={styles.metaItem}>
+                      <Route size={14} color="#9CA3AF" strokeWidth={2} />
+                      <Text style={styles.metaText}>{trip.totalDistance || 'N/A'}</Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.difficultyContainer}>
+                    <View style={[
+                      styles.difficultyBadge,
+                      { backgroundColor: getDifficultyColor(trip.difficulty) + '20' }
+                    ]}>
+                      <Text style={[
+                        styles.difficultyText,
+                        { color: getDifficultyColor(trip.difficulty) }
+                      ]}>
+                        {trip.difficulty || 'N/A'}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.locationsContainer}>
+                  <Text style={styles.locationsTitle}>Stops ({trip.locations ? trip.locations.length : 0})</Text>
+                  {trip.locations && trip.locations.map((location, index) => (
+                    <View key={location.id} style={styles.locationItem}>
+                      <View style={styles.locationNumber}>
+                        <Text style={styles.locationNumberText}>{index + 1}</Text>
+                      </View>
+                      <View style={styles.locationDetails}>
+                        <Text style={styles.locationName}>{location.name}</Text>
+                        <Text style={styles.locationAddress}>{location.address}</Text>
+                        <View style={styles.locationMeta}>
+                          <View style={styles.locationTime}>
+                            <Clock size={12} color="#9CA3AF" strokeWidth={2} />
+                            <Text style={styles.locationTimeText}>{location.estimatedTime}</Text>
+                          </View>
+                          <View style={styles.locationType}>
+                            <Text style={styles.locationTypeText}>{location.type}</Text>
+                          </View>
                         </View>
                       </View>
                     </View>
-                  </View>
-                ))}
+                  ))}
+                </View>
+
+                <TouchableOpacity style={styles.startTripButton} onPress={() => router.push({ pathname: '/trip-details', params: { trip: JSON.stringify(trip) } })}>
+                  <MapPin size={16} color="#FFFFFF" strokeWidth={2.5} />
+                  <Text style={styles.startTripButtonText}>View Trip</Text>
+                </TouchableOpacity>
               </View>
+            ))}
 
-              <TouchableOpacity style={styles.startTripButton}>
-                <MapPin size={16} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={styles.startTripButtonText}>Start Trip</Text>
-              </TouchableOpacity>
-            </View>
-          ))}
+            {tripPlans.length === 0 && (
+              <View style={styles.emptyState}>
+                <Route size={48} color="#A78BFA" strokeWidth={2} />
+                <Text style={styles.emptyTitle}>No trip plans yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  Create your first AI-powered itinerary to start exploring
+                </Text>
+                <TouchableOpacity
+                  style={styles.emptyButton}
+                  onPress={() => setShowCreateForm(true)}
+                >
+                  <Text style={styles.emptyButtonText}>Create Trip Plan</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-          {tripPlans.length === 0 && (
-            <View style={styles.emptyState}>
-              <Route size={48} color="#A78BFA" strokeWidth={2} />
-              <Text style={styles.emptyTitle}>No trip plans yet</Text>
-              <Text style={styles.emptySubtitle}>
-                Create your first AI-powered itinerary to start exploring
-              </Text>
-              <TouchableOpacity
-                style={styles.emptyButton}
-                onPress={() => setShowCreateForm(true)}
-              >
-                <Text style={styles.emptyButtonText}>Create Trip Plan</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.bottomPadding} />
-        </ScrollView>
+            <View style={styles.bottomPadding} />
+          </ScrollView>
+        )}
       </SafeAreaView>
     </View>
   );

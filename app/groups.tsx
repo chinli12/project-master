@@ -215,11 +215,11 @@ export default function GroupsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     marginBottom: 8,
   },
   tabButton: {
@@ -230,22 +230,22 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   activeTab: {
-    borderBottomColor: '#A78BFA',
+    borderBottomColor: '#3B82F6',
   },
   tabText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   activeTabText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
   },
   listContainer: {
     paddingBottom: 20,
     marginTop: 20,
   },
   groupCard: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     flex: 1,
     marginRight: 8,
   },
@@ -293,17 +293,17 @@ const styles = StyleSheet.create({
   },
   privacyText: {
     fontSize: 13,
-    color: '#D1D5DB',
+    color: '#6B7280',
     marginLeft: 6,
   },
   memberCount: {
     fontSize: 13,
-    color: '#D1D5DB',
+    color: '#6B7280',
     marginLeft: 6,
   },
   lastActivity: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginBottom: 12,
   },
   groupActions: {
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#374151',
+    borderTopColor: '#E5E7EB',
   },
   actionButton: {
     flexDirection: 'row',
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     fontSize: 14,
-    color: '#A78BFA',
+    color: '#3B82F6',
     marginLeft: 6,
     fontWeight: '600',
   },
@@ -334,7 +334,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#3B82F6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,

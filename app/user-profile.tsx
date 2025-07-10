@@ -436,7 +436,7 @@ export default function UserProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: 'Poppins-Bold',
-    color: '#FFFFFF',
+    color: '#1F2937',
     marginLeft: 16,
   },
   backgroundGradient: {
@@ -476,7 +476,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: 80,
     borderWidth: 6,
-    borderColor: '#1F2937',
+    borderColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.2,
@@ -491,15 +491,12 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 28,
     fontFamily: 'Poppins-Bold',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    color: '#1F2937',
   },
   userBio: {
     fontSize: 17,
     fontFamily: 'Inter-Light',
-    color: 'rgba(255,255,255,0.8)',
+    color: '#6B7280',
     textAlign: 'center',
     marginTop: 8,
   },
@@ -514,7 +511,7 @@ const styles = StyleSheet.create({
   followButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#374151',
+    backgroundColor: '#3B82F6',
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
@@ -530,13 +527,13 @@ const styles = StyleSheet.create({
   messageButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#1E3A8A',
     paddingHorizontal: 28,
     paddingVertical: 14,
     borderRadius: 16,
     flex: 1,
     justifyContent: 'center',
-    shadowColor: '#4F46E5',
+    shadowColor: '#1E3A8A',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -548,7 +545,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   statsContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     justifyContent: 'space-around',
     padding: 20,
@@ -567,15 +564,15 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 20,
     fontFamily: 'Poppins-Bold',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   statLabel: {
     fontSize: 15,
     fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   section: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     marginTop: 20,
     borderRadius: 20,
@@ -590,7 +587,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontFamily: 'Poppins-Bold',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 16,
   },
   photoGrid: {
@@ -605,7 +602,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   noPhotosText: {
-    color: '#D1D5DB',
+    color: '#6B7280',
     textAlign: 'center',
     fontFamily: 'Inter-Regular',
     fontSize: 16,
@@ -624,6 +621,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontFamily: 'Inter-Medium',
     fontSize: 15,
-    color: '#D1D5DB',
+    color: '#1F2937',
   },
 });

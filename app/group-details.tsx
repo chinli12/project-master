@@ -1496,7 +1496,7 @@ export default function GroupDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   navigationHeader: {
     flexDirection: 'row',
@@ -1505,7 +1505,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#374151',
+    borderBottomColor: '#E5E7EB',
   },
   backButton: {
     padding: 8,
@@ -1513,7 +1513,7 @@ const styles = StyleSheet.create({
   navigationTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     flex: 1,
     textAlign: 'center',
   },
@@ -1521,7 +1521,7 @@ const styles = StyleSheet.create({
     padding: 8,
   },
   headerContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
   },
   coverPhotoContainer: {
     position: 'relative',
@@ -1553,7 +1553,7 @@ const styles = StyleSheet.create({
   groupName: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 4,
   },
   groupMetaRow: {
@@ -1562,12 +1562,12 @@ const styles = StyleSheet.create({
   },
   groupPrivacy: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginLeft: 4,
   },
   memberCount: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginLeft: 4,
   },
   moreButton: {
@@ -1587,12 +1587,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   primaryButton: {
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#3B82F6',
     flex: 1,
     justifyContent: 'center',
   },
   secondaryButton: {
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
     width: 44,
     justifyContent: 'center',
   },
@@ -1607,7 +1607,7 @@ const styles = StyleSheet.create({
   tabNavigation: {
     flexDirection: 'row',
     borderTopWidth: 1,
-    borderTopColor: '#374151',
+    borderTopColor: '#E5E7EB',
     paddingTop: 16,
   },
   tabItem: {
@@ -1620,22 +1620,22 @@ const styles = StyleSheet.create({
   },
   activeTabItem: {
     borderBottomWidth: 2,
-    borderBottomColor: '#A78BFA',
+    borderBottomColor: '#3B82F6',
   },
   tabLabel: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontWeight: '500',
   },
   activeTabLabel: {
-    color: '#A78BFA',
+    color: '#3B82F6',
   },
   contentContainer: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   postComposer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     borderRadius: 12,
     padding: 16,
@@ -1653,7 +1653,7 @@ const styles = StyleSheet.create({
   },
   composerInput: {
     flex: 1,
-    color: '#F9FAFB',
+    color: '#1F2937',
     fontSize: 16,
     minHeight: 40,
     textAlignVertical: 'top',
@@ -1664,7 +1664,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   composerInputPlaceholder: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontSize: 16,
   },
   composerActions: {
@@ -1673,7 +1673,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#374151',
+    borderTopColor: '#E5E7EB',
   },
   composerOption: {
     flexDirection: 'row',
@@ -1681,12 +1681,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   composerOptionText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontSize: 14,
     fontWeight: '500',
   },
   postSubmitButton: {
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#3B82F6',
     paddingHorizontal: 20,
     paddingVertical: 8,
     borderRadius: 20,
@@ -1696,7 +1696,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   postCard: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 12,
@@ -1719,18 +1719,18 @@ const styles = StyleSheet.create({
   postAuthor: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   postTime: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   postMoreButton: {
     padding: 4,
   },
   postContent: {
     fontSize: 16,
-    color: '#D1D5DB',
+    color: '#1F2937',
     lineHeight: 24,
     marginBottom: 12,
   },
@@ -1759,7 +1759,7 @@ const styles = StyleSheet.create({
   },
   postEngagement: {
     borderTopWidth: 1,
-    borderTopColor: '#374151',
+    borderTopColor: '#E5E7EB',
     paddingTop: 12,
   },
   engagementStats: {
@@ -1769,7 +1769,7 @@ const styles = StyleSheet.create({
   },
   engagementText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   engagementActions: {
     flexDirection: 'row',
@@ -1784,11 +1784,11 @@ const styles = StyleSheet.create({
   },
   engagementActionText: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontWeight: '500',
   },
   membersContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     borderRadius: 12,
     padding: 16,
@@ -1802,7 +1802,7 @@ const styles = StyleSheet.create({
   membersTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   searchButton: {
     padding: 8,
@@ -1812,7 +1812,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#374151',
+    borderBottomColor: '#E5E7EB',
   },
   memberAvatar: {
     width: 40,
@@ -1826,7 +1826,7 @@ const styles = StyleSheet.create({
   memberName: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 2,
   },
   memberMetaRow: {
@@ -1836,7 +1836,7 @@ const styles = StyleSheet.create({
   roleTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
@@ -1845,12 +1845,12 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontSize: 12,
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontWeight: '500',
   },
   memberJoinDate: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   memberActionButton: {
     padding: 8,
@@ -1862,7 +1862,7 @@ const styles = StyleSheet.create({
   },
   emptyStateText: {
     fontSize: 16,
-    color: '#9CA3AF',
+    color: '#6B7280',
     marginTop: 16,
   },
   emptyStateSubtext: {
@@ -1873,7 +1873,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
   },
   mediaContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     borderRadius: 12,
     padding: 16,
@@ -1887,7 +1887,7 @@ const styles = StyleSheet.create({
   mediaTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   mediaGrid: {
     flexDirection: 'row',
@@ -1900,7 +1900,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
   },
   mediaGridImage: {
     width: '100%',
@@ -1976,7 +1976,7 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1985,17 +1985,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#374151',
+    borderBottomColor: '#E5E7EB',
   },
   modalCloseText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontSize: 16,
     fontWeight: '600',
   },
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   settingsContent: {
     flex: 1,
@@ -2004,12 +2004,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#374151',
+    borderBottomColor: '#E5E7EB',
   },
   settingsSectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 16,
   },
   settingsItem: {
@@ -2020,11 +2020,11 @@ const styles = StyleSheet.create({
   },
   settingsItemText: {
     fontSize: 16,
-    color: '#D1D5DB',
+    color: '#1F2937',
   },
   // Create Post Modal Styles
   modalPostButton: {
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#3B82F6',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -2042,7 +2042,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   createPostSection: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     padding: 16,
     margin: 16,
     borderRadius: 12,
@@ -2064,21 +2064,21 @@ const styles = StyleSheet.create({
   createPostUsername: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 2,
   },
   createPostGroupName: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   createPostInput: {
-    color: '#F9FAFB',
+    color: '#1F2937',
     fontSize: 16,
     minHeight: 100,
     textAlignVertical: 'top',
   },
   selectedMediaContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     marginTop: 0,
     borderRadius: 12,
@@ -2093,7 +2093,7 @@ const styles = StyleSheet.create({
   selectedMediaTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   removeMediaButton: {
     padding: 4,
@@ -2109,7 +2109,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   selectedLocationContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     marginTop: 0,
     borderRadius: 12,
@@ -2120,7 +2120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedLocationText: {
-    color: '#F9FAFB',
+    color: '#1F2937',
     fontSize: 16,
     marginLeft: 8,
     flex: 1,
@@ -2134,7 +2134,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   addLocationButton: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     marginTop: 0,
     borderRadius: 12,
@@ -2143,13 +2143,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   addLocationText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontSize: 16,
     marginLeft: 8,
     fontWeight: '500',
   },
   mediaOptionsContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     marginTop: 0,
     borderRadius: 12,
@@ -2158,7 +2158,7 @@ const styles = StyleSheet.create({
   mediaOptionsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#F9FAFB',
+    color: '#1F2937',
     marginBottom: 16,
   },
   mediaOptionsGrid: {
@@ -2167,7 +2167,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   mediaOptionButton: {
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
     borderRadius: 8,
     padding: 16,
     alignItems: 'center',
@@ -2175,12 +2175,12 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   mediaOptionText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontSize: 14,
     fontWeight: '500',
   },
   uploadProgressContainer: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     margin: 16,
     marginTop: 0,
     borderRadius: 12,
@@ -2190,13 +2190,13 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   uploadProgressText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontSize: 16,
   },
   postLocationContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#374151',
+    backgroundColor: '#E5E7EB',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -2205,7 +2205,7 @@ const styles = StyleSheet.create({
   },
   postLocationText: {
     fontSize: 12,
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontWeight: '500',
     marginLeft: 4,
   },
@@ -2214,7 +2214,7 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
   },
   groupDescription: {
-    color: '#D1D5DB',
+    color: '#1F2937',
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 12,
@@ -2230,7 +2230,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   metaDetailText: {
-    color: '#D1D5DB',
+    color: '#1F2937',
     fontSize: 14,
   },
   expandableSection: {
@@ -2243,11 +2243,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   readMoreText: {
-    color: '#A78BFA',
+    color: '#3B82F6',
     fontWeight: '600',
   },
   groupRulesTitle: {
-    color: '#F9FAFB',
+    color: '#1F2937',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,

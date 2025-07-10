@@ -253,7 +253,7 @@ export default function CommunityScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   backgroundGradient: {
     position: 'absolute',
@@ -261,6 +261,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: 300,
+    opacity: 0.5,
   },
   header: {
     paddingHorizontal: 20,
@@ -276,18 +277,15 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontFamily: 'Poppins-Bold',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    color: '#1F2937',
   },
   subtitle: {
     fontSize: 17,
     fontFamily: 'Inter-Light',
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#6B7280',
   },
   createButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: '#3B82F6',
     borderRadius: 16,
     padding: 12,
     shadowColor: '#000',
@@ -299,7 +297,7 @@ const styles = StyleSheet.create({
   tabBar: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     marginHorizontal: 20,
     borderRadius: 20,
     paddingVertical: 6,
@@ -315,15 +313,15 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   activeTab: {
-    backgroundColor: '#4F46E5',
-    shadowColor: '#4F46E5',
+    backgroundColor: '#3B82F6',
+    shadowColor: '#3B82F6',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
   },
   tabText: {
-    color: '#9CA3AF',
+    color: '#6B7280',
     fontFamily: 'Inter-SemiBold',
     fontSize: 15,
   },
@@ -336,7 +334,7 @@ const styles = StyleSheet.create({
     paddingTop: 20,
   },
   postCard: {
-    backgroundColor: '#1F2937',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 20,
     marginBottom: 24,
@@ -366,7 +364,7 @@ const styles = StyleSheet.create({
   authorName: {
     fontSize: 16,
     fontFamily: 'Poppins-SemiBold',
-    color: '#F9FAFB',
+    color: '#1F2937',
   },
   authorLocation: {
     fontSize: 14,
@@ -381,7 +379,7 @@ const styles = StyleSheet.create({
   postText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
-    color: '#D1D5DB',
+    color: '#1F2937',
     lineHeight: 24,
     marginBottom: 16,
   },
@@ -412,7 +410,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#374151',
+    borderTopColor: '#E5E7EB',
   },
   engagementButton: {
     flexDirection: 'row',
@@ -422,7 +420,7 @@ const styles = StyleSheet.create({
   engagementText: {
     fontSize: 15,
     fontFamily: 'Inter-Medium',
-    color: '#9CA3AF',
+    color: '#6B7280',
   },
   likedText: {
     color: '#F87171',
@@ -436,7 +434,7 @@ const styles = StyleSheet.create({
     borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#3B82F6',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
