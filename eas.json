@@ -6,19 +6,55 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://deycthvditigtcwtvals.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRleWN0aHZkaXRpZ3Rjd3R2YWxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMjQyMjgsImV4cCI6MjA1MTYwMDIyOH0.uokijIkfv2jGMH4xWNzYiqiaBOr5UeFUQM7FA2tZZfQ",
+        "EXPO_PUBLIC_ELEVENLABS_API_KEY":"sk_b3812a6d15ecbb47cb51e0872d8504bad9d69bd20c4fbef9",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":"AIzaSyArQQgKA4uz4bwoz4l2THPNVCOlususLFc",
+        "EXPO_PUBLIC_GEMINI_API_KEY":"AIzaSyBvU8wYlpe9NoyxMlbevHN_bNbR_eNebUY",
+        "EXPO_PUBLIC_OPENWEATHER_API_KEY":"b81e5f63fc16b04f1780256809ed2dac",
+        "EXPO_PUBLIC_NEWS_API_KEY":"8547ec0c9872405692cbc8e0095a5f10",
+        "EXPO_PUBLIC_AGORA_APP_ID":"5cd07c6d6b5647e3bced6905b5acdd6d"
+      }
     },
     "preview": {
       "android": {
-        "buildType": "apk"  
+        "buildType": "apk"
       },
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://deycthvditigtcwtvals.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRleWN0aHZkaXRpZ3Rjd3R2YWxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMjQyMjgsImV4cCI6MjA1MTYwMDIyOH0.uokijIkfv2jGMH4xWNzYiqiaBOr5UeFUQM7FA2tZZfQ",
+        "EXPO_PUBLIC_ELEVENLABS_API_KEY":"sk_b3812a6d15ecbb47cb51e0872d8504bad9d69bd20c4fbef9",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":"AIzaSyArQQgKA4uz4bwoz4l2THPNVCOlususLFc",
+        "EXPO_PUBLIC_GEMINI_API_KEY":"AIzaSyBvU8wYlpe9NoyxMlbevHN_bNbR_eNebUY",
+        "EXPO_PUBLIC_OPENWEATHER_API_KEY":"b81e5f63fc16b04f1780256809ed2dac",
+        "EXPO_PUBLIC_NEWS_API_KEY":"8547ec0c9872405692cbc8e0095a5f10",
+        "EXPO_PUBLIC_AGORA_APP_ID":"5cd07c6d6b5647e3bced6905b5acdd6d"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+       "EXPO_PUBLIC_SUPABASE_URL": "https://deycthvditigtcwtvals.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRleWN0aHZkaXRpZ3Rjd3R2YWxzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMjQyMjgsImV4cCI6MjA1MTYwMDIyOH0.uokijIkfv2jGMH4xWNzYiqiaBOr5UeFUQM7FA2tZZfQ",
+        "EXPO_PUBLIC_ELEVENLABS_API_KEY":"sk_b3812a6d15ecbb47cb51e0872d8504bad9d69bd20c4fbef9",
+        "EXPO_PUBLIC_GOOGLE_MAPS_API_KEY":"AIzaSyArQQgKA4uz4bwoz4l2THPNVCOlususLFc",
+        "EXPO_PUBLIC_GEMINI_API_KEY":"AIzaSyBvU8wYlpe9NoyxMlbevHN_bNbR_eNebUY",
+        "EXPO_PUBLIC_OPENWEATHER_API_KEY":"b81e5f63fc16b04f1780256809ed2dac",
+        "EXPO_PUBLIC_NEWS_API_KEY":"8547ec0c9872405692cbc8e0095a5f10",
+        "EXPO_PUBLIC_AGORA_APP_ID":"5cd07c6d6b5647e3bced6905b5acdd6d"
+      }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "akin.akinfenwa@skillweed.com",
+        "ascAppId": "6748559922",
+        "appleTeamId": "TMTR8P9B7G"
+      }
+    }
   }
 }

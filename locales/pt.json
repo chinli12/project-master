@@ -1,0 +1,58 @@
+{
+  "badges": {
+    "title": "Emblemas",
+    "earnedBadges": "Emblemas Conquistados",
+    "availableBadges": "Emblemas Disponíveis",
+    "noEarnedBadges": "Nenhum emblema conquistado ainda",
+    "noAvailableBadges": "Nenhum emblema disponível",
+    "earnedOn": "Conquistado em",
+    "progress": "Progresso",
+    "rarity": {
+      "common": "Comum",
+      "rare": "Raro",
+      "epic": "Épico",
+      "legendary": "Lendário"
+    },
+    "categories": {
+      "exploration": "Exploração",
+      "social": "Social",
+      "achievement": "Conquista",
+      "special": "Especial"
+    }
+  },
+  "navigation": {
+    "back": "Voltar",
+    "home": "Início",
+    "profile": "Perfil",
+    "settings": "Configurações",
+    "search": "Pesquisar"
+  },
+  "common": {
+    "loading": "Carregando...",
+    "error": "Erro",
+    "retry": "Tentar novamente",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "delete": "Excluir",
+    "edit": "Editar",
+    "share": "Compartilhar",
+    "close": "Fechar",
+    "yes": "Sim",
+    "no": "Não",
+    "ok": "OK",
+    "complete": "Concluído"
+  },
+  "settings": {
+    "title": "Configurações",
+    "language": "Idioma",
+    "changeLanguage": "Alterar idioma"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "pt": "Português"
+  }
+}

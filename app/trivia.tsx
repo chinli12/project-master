@@ -5,7 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
-const mockTrivia = {
+interface TriviaQuestion {
+  question: string;
+  options: string[];
+  answer: string;
+}
+
+const mockTrivia: { [key: string]: TriviaQuestion[] } = {
   'ChIJj61dQgK6j4AR4GeTYWZsKWw': [
     {
       question: 'What year was the Googleplex opened?',
@@ -18,7 +24,7 @@ const mockTrivia = {
 export default function TriviaScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams();
-  const [questions, setQuestions] = useState(mockTrivia[id as string] || []);
+    const [questions, setQuestions] = useState<TriviaQuestion[]>(mockTrivia[id as string] || []);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [score, setScore] = useState(0);
 

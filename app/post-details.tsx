@@ -13,27 +13,32 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  Share,
+  Linking,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { PanGestureHandler, PanGestureHandlerGestureEvent, PinchGestureHandler, PinchGestureHandlerGestureEvent, State } from 'react-native-gesture-handler';
+import { PanGestureHandler, PanGestureHandlerGestureEvent, PinchGestureHandler, PinchGestureHandlerGestureEvent, State, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   useAnimatedGestureHandler,
   withTiming,
 } from 'react-native-reanimated';
-import { Heart, MessageCircle, Share, ChevronLeft, X, MapPin, MoreHorizontal, Flag, UserX, AlertTriangle } from 'lucide-react-native';
+import { Heart, MessageCircle, Share as ShareIcon, ChevronLeft, X, MapPin, MoreHorizontal, Flag, UserX, AlertTriangle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { supabase } from '@/lib/supabase';
 import { Video } from 'expo-av';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Comment {
   id: string;
   content: string;
   created_at: string;
+  user_id: string;
   profiles: {
+    id?: string;
     username: string;
     avatar_url: string;
   };
@@ -51,6 +56,7 @@ type AnimatedGHContext = {
 export default function PostDetailsScreen() {
   const { post: postString } = useLocalSearchParams();
   const router = useRouter();
+  const { user } = useAuth();
 
   if (!postString) {
     return (
@@ -71,6 +77,7 @@ export default function PostDetailsScreen() {
   }
   const [isLiked, setIsLiked] = useState(false);
   const [likes, setLikes] = useState(0);
+  const [shares, setShares] = useState(0);
   const [comment, setComment] = useState('');
   const [comments, setComments] = useState<Comment[]>([]);
   const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
@@ -174,28 +181,44 @@ export default function PostDetailsScreen() {
       data: { user },
     } = await supabase.auth.getUser();
 
-    const { data: commentsData } = await supabase
+    const { data: commentsData, error: commentsError } = await supabase
       .from('comments')
-      .select('*, profiles(username, avatar_url)')
+      .select('*, profiles(id, username, avatar_url)')
       .eq('post_id', post.id)
       .order('created_at', { ascending: true });
+
+    if (commentsError) {
+      console.error('Error fetching comments:', commentsError);
+      return;
+    }
 
     if (commentsData) {
       const commentsWithLikes = await Promise.all(
         commentsData.map(async (comment: any) => {
-          const { count: likesCount } = await supabase
+          // Fetch comment likes count
+          const { count: likesCount, error: likesCountError } = await supabase
             .from('comment_likes')
             .select('*', { count: 'exact', head: true })
             .eq('comment_id', comment.id);
 
+          if (likesCountError) {
+            console.error('Error fetching comment likes count:', likesCountError);
+          }
+
+          // Check if current user has liked this comment
           let isLikedByUser = false;
           if (user) {
-            const { data: userLike } = await supabase
+            const { data: userLike, error: userLikeError } = await supabase
               .from('comment_likes')
               .select('id')
               .eq('comment_id', comment.id)
               .eq('user_id', user.id)
               .single();
+            
+            if (userLikeError && userLikeError.code !== 'PGRST116') {
+              console.error('Error checking user like:', userLikeError);
+            }
+            
             if (userLike) {
               isLikedByUser = true;
             }
@@ -213,9 +236,6 @@ export default function PostDetailsScreen() {
   };
 
   const handleLike = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
     if (!user) {
       Alert.alert('Error', 'You must be logged in to like a post.');
       return;
@@ -246,9 +266,6 @@ export default function PostDetailsScreen() {
 
   const handleAddComment = async () => {
     if (comment.trim()) {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
       if (!user) {
         Alert.alert('Error', 'You must be logged in to comment.');
         return;
@@ -280,7 +297,6 @@ export default function PostDetailsScreen() {
   };
 
   const handleLikeComment = async (commentId: string, isLiked: boolean) => {
-    const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       Alert.alert('Error', 'You must be logged in to like a comment.');
       return;
@@ -294,10 +310,21 @@ export default function PostDetailsScreen() {
           .delete()
           .eq('comment_id', commentId)
           .eq('user_id', user.id);
-        if (error) throw error;
+        
+        if (error) {
+          console.error('Error unliking comment:', error);
+          // If the table doesn't exist, show a helpful message
+          if (error.code === '42P01') {
+            Alert.alert('Database Setup Required', 'The comment likes table needs to be created. Please run the comment_likes_migration.sql file.');
+            return;
+          }
+          throw error;
+        }
+        
+        // Update local state optimistically
         setComments(prevComments => 
           prevComments.map(c => 
-            c.id === commentId ? { ...c, likes_count: c.likes_count - 1, is_liked_by_user: false } : c
+            c.id === commentId ? { ...c, likes_count: Math.max(0, c.likes_count - 1), is_liked_by_user: false } : c
           )
         );
       } else {
@@ -305,7 +332,18 @@ export default function PostDetailsScreen() {
         const { error } = await supabase
           .from('comment_likes')
           .insert({ comment_id: commentId, user_id: user.id });
-        if (error) throw error;
+        
+        if (error) {
+          console.error('Error liking comment:', error);
+          // If the table doesn't exist, show a helpful message
+          if (error.code === '42P01') {
+            Alert.alert('Database Setup Required', 'The comment likes table needs to be created. Please run the comment_likes_migration.sql file.');
+            return;
+          }
+          throw error;
+        }
+        
+        // Update local state optimistically
         setComments(prevComments => 
           prevComments.map(c => 
             c.id === commentId ? { ...c, likes_count: c.likes_count + 1, is_liked_by_user: true } : c
@@ -313,13 +351,41 @@ export default function PostDetailsScreen() {
         );
       }
     } catch (error: any) {
-      console.error('Error liking/unliking comment:', error.message);
-      Alert.alert('Error', 'Failed to like/unlike comment.');
+      console.error('Error liking/unliking comment:', error);
+      Alert.alert('Error', `Failed to ${isLiked ? 'unlike' : 'like'} comment: ${error.message}`);
     }
   };
 
   const handleReply = (comment: Comment) => {
     setReplyingTo(comment);
+  };
+
+  const handleShare = async () => {
+    try {
+      const shareMessage = `Check out this post by ${post.profiles.username}: ${post.content}`;
+      const result = await Share.share({
+        message: shareMessage,
+        title: `Post by ${post.profiles.username}`,
+        url: post.media_url || undefined,
+      });
+
+      // If the share was successful, increment the share count
+      if (result.action === Share.sharedAction) {
+        setShares(prev => prev + 1);
+        
+        // You could also track shares in the database here
+        // const { data: { user } } = await supabase.auth.getUser();
+        // if (user) {
+        //   await supabase.from('post_shares').insert({
+        //     post_id: post.id,
+        //     user_id: user.id
+        //   });
+        // }
+      }
+    } catch (error) {
+      console.error('Error sharing post:', error);
+      Alert.alert('Error', 'Failed to share post');
+    }
   };
 
   const handleReportPost = () => {
@@ -367,7 +433,6 @@ export default function PostDetailsScreen() {
 
   const submitReport = async (reason: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         Alert.alert('Error', 'You must be logged in to report content.');
         return;
@@ -402,7 +467,6 @@ export default function PostDetailsScreen() {
 
   const blockUser = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         Alert.alert('Error', 'You must be logged in to block users.');
         return;
@@ -440,9 +504,39 @@ export default function PostDetailsScreen() {
 
   const renderComment = ({ item }: { item: Comment }) => (
     <View style={[styles.commentContainer, item.parent_comment_id && styles.replyCommentContainer]}>
-      <Image source={{ uri: item.profiles.avatar_url }} style={styles.commentAvatar} />
+      <TouchableOpacity 
+        onPress={() => router.push({
+          pathname: '/user-profile',
+          params: { 
+            userId: item.profiles.id || item.user_id,
+            user: JSON.stringify({
+              id: item.profiles.id || item.user_id,
+              full_name: item.profiles.username,
+              avatar_url: item.profiles.avatar_url,
+              username: item.profiles.username
+            })
+          }
+        })}
+      >
+        <Image source={{ uri: item.profiles.avatar_url }} style={styles.commentAvatar} />
+      </TouchableOpacity>
       <View style={styles.commentBubble}>
-        <Text style={styles.commentAuthor}>{item.profiles.username}</Text>
+        <TouchableOpacity 
+          onPress={() => router.push({
+            pathname: '/user-profile',
+            params: { 
+              userId: item.profiles.id || item.user_id,
+              user: JSON.stringify({
+                id: item.profiles.id || item.user_id,
+                full_name: item.profiles.username,
+                avatar_url: item.profiles.avatar_url,
+                username: item.profiles.username
+              })
+            }
+          })}
+        >
+          <Text style={styles.commentAuthor}>{item.profiles.username}</Text>
+        </TouchableOpacity>
         <Text style={styles.commentText}>{item.content}</Text>
         <View style={styles.commentActions}>
           <TouchableOpacity onPress={() => handleLikeComment(item.id, item.is_liked_by_user)}>
@@ -459,10 +553,11 @@ export default function PostDetailsScreen() {
   );
 
   const renderHeader = () => (
-    <View style={styles.postCard}>
-      <View style={styles.postHeader}>
+    <View style={styles.facebookPostCard}>
+      {/* Post Header */}
+      <View style={styles.facebookPostHeader}>
         <TouchableOpacity 
-          style={styles.authorSection}
+          style={styles.facebookAuthorSection}
           onPress={() => router.push({
             pathname: '/user-profile',
             params: { 
@@ -477,73 +572,108 @@ export default function PostDetailsScreen() {
             }
           })}
         >
-          <Image source={{ uri: post.profiles.avatar_url }} style={styles.avatar} />
-          <View style={styles.authorInfo}>
-            <Text style={styles.authorName}>{post.profiles.username}</Text>
-            <View style={styles.postMetaRow}>
-              <Text style={styles.timestamp}>
-                {new Date(post.created_at).toLocaleDateString()} • {new Date(post.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <Image source={{ uri: post.profiles.avatar_url }} style={styles.facebookAvatar} />
+          <View style={styles.facebookAuthorInfo}>
+            <Text style={styles.facebookAuthorName}>{post.profiles.username}</Text>
+            <View style={styles.facebookMetaRow}>
+              <Text style={styles.facebookTimestamp}>
+                {new Date(post.created_at).toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric'
+                })} at {new Date(post.created_at).toLocaleTimeString([], { 
+                  hour: '2-digit', 
+                  minute: '2-digit' 
+                })}
               </Text>
+              <Text style={styles.facebookDot}>•</Text>
+              <View style={styles.facebookPublicIcon}>
+                <Text style={styles.facebookPublicText}>🌍</Text>
+              </View>
             </View>
             {post.location && (
-              <TouchableOpacity style={styles.locationContainer}>
-                <MapPin size={16} color="#A78BFA" />
-                <Text style={styles.locationDisplayText}>{post.location}</Text>
+              <TouchableOpacity style={styles.facebookLocationContainer}>
+                <MapPin size={12} color="#65676B" />
+                <Text style={styles.facebookLocationText}>{post.location}</Text>
               </TouchableOpacity>
             )}
           </View>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={styles.moreButton}
+          style={styles.facebookMoreButton}
           onPress={() => setShowPostOptionsModal(true)}
         >
-          <MoreHorizontal size={24} color="#9CA3AF" />
+          <MoreHorizontal size={20} color="#65676B" />
         </TouchableOpacity>
       </View>
 
-      <Text style={styles.postText}>{post.content}</Text>
+      {/* Post Content */}
+      <Text style={styles.facebookPostText}>{post.content}</Text>
 
+      {/* Post Media */}
       {post.media_url && post.media_type === 'image' && (
-        <TouchableOpacity onPress={() => setIsImageModalVisible(true)}>
-          <Image source={{ uri: post.media_url }} style={styles.postImage} />
+        <TouchableOpacity onPress={() => setIsImageModalVisible(true)} style={styles.facebookMediaContainer}>
+          <Image source={{ uri: post.media_url }} style={styles.facebookPostImage} />
         </TouchableOpacity>
       )}
 
       {post.media_url && post.media_type === 'video' && (
-        <Video
-          source={{ uri: post.media_url }}
-          rate={1.0}
-          volume={1.0}
-          isMuted={false}
-          shouldPlay
-          isLooping
-          style={styles.postImage}
-        />
+        <View style={styles.facebookMediaContainer}>
+          <Video
+            source={{ uri: post.media_url }}
+            rate={1.0}
+            volume={1.0}
+            isMuted={false}
+            shouldPlay
+            isLooping
+            style={styles.facebookPostImage}
+          />
+        </View>
       )}
 
-      <View style={styles.engagementStats}>
-        <Text style={styles.engagementText}>{likes} Likes</Text>
-        <Text style={styles.engagementText}>{comments.length} Comments</Text>
+      {/* Reactions Bar */}
+      <View style={styles.facebookReactionBar}>
+        <TouchableOpacity style={styles.facebookReactionSection}>
+          <View style={styles.facebookEmojiContainer}>
+            <Text style={styles.facebookEmoji}>👍</Text>
+            <Text style={styles.facebookEmoji}>❤️</Text>
+            <Text style={styles.facebookEmoji}>😊</Text>
+          </View>
+          <Text style={styles.facebookReactionText}>
+            {likes > 0 ? likes : ''}
+          </Text>
+        </TouchableOpacity>
+        <View style={styles.facebookEngagementStats}>
+          <Text style={styles.facebookEngagementText}>
+            {comments.length} comments
+          </Text>
+          {shares > 0 && (
+            <Text style={styles.facebookEngagementText}>
+              {shares} shares
+            </Text>
+          )}
+        </View>
       </View>
 
-      <View style={styles.engagementActions}>
-        <TouchableOpacity style={styles.engagementButton} onPress={handleLike}>
+      {/* Action Buttons */}
+      <View style={styles.facebookActionBar}>
+        <TouchableOpacity style={styles.facebookActionButton} onPress={handleLike}>
           <Heart
-            size={24}
-            color={isLiked ? '#F472B6' : '#FFFFFF'}
-            fill={isLiked ? '#F472B6' : 'transparent'}
+            size={20}
+            color={isLiked ? '#E31E24' : '#65676B'}
+            fill={isLiked ? '#E31E24' : 'transparent'}
+            strokeWidth={2}
           />
-          <Text style={[styles.engagementButtonText, isLiked && styles.likedText]}>Like</Text>
+          <Text style={[styles.facebookActionText, isLiked && styles.facebookLikedText]}>Like</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.engagementButton}>
-          <MessageCircle size={24} color="#FFFFFF" />
-          <Text style={styles.engagementButtonText}>Comment</Text>
+        <TouchableOpacity style={styles.facebookActionButton}>
+          <MessageCircle size={20} color="#65676B" strokeWidth={2} />
+          <Text style={styles.facebookActionText}>Comment</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.engagementButton}>
-          <Share size={24} color="#FFFFFF" />
-          <Text style={styles.engagementButtonText}>Share</Text>
+        <TouchableOpacity style={styles.facebookActionButton} onPress={handleShare}>
+          <ShareIcon size={20} color="#65676B" strokeWidth={2} />
+          <Text style={styles.facebookActionText}>Share</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -551,10 +681,16 @@ export default function PostDetailsScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#8B5CF6', '#7C3AED', '#6366F1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backgroundGradient}
+      />
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={28} color="#FFFFFF" />
+            <ChevronLeft size={28} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
           <Text style={styles.title}>{post.profiles.username}'s Post</Text>
         </View>
@@ -677,27 +813,29 @@ export default function PostDetailsScreen() {
         transparent={true}
         onRequestClose={onModalClose}
       >
-        <View style={styles.modalContainer}>
-          <TouchableOpacity
-            style={styles.modalCloseButton}
-            onPress={onModalClose}
-          >
-            <X size={32} color="#FFFFFF" />
-          </TouchableOpacity>
-          <PanGestureHandler onGestureEvent={panHandler}>
-            <Animated.View style={styles.fullscreenImageContainer}>
-              <PinchGestureHandler onGestureEvent={pinchHandler}>
-                <Animated.View style={styles.fullscreenImageContainer}>
-                  <Animated.Image
-                    source={{ uri: post.media_url }}
-                    style={[styles.fullscreenImage, animatedStyle]}
-                    resizeMode="contain"
-                  />
-                </Animated.View>
-              </PinchGestureHandler>
-            </Animated.View>
-          </PanGestureHandler>
-        </View>
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <View style={styles.modalContainer}>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={onModalClose}
+            >
+              <X size={32} color="#FFFFFF" />
+            </TouchableOpacity>
+            <PanGestureHandler onGestureEvent={panHandler}>
+              <Animated.View style={styles.fullscreenImageContainer}>
+                <PinchGestureHandler onGestureEvent={pinchHandler}>
+                  <Animated.View style={styles.fullscreenImageContainer}>
+                    <Animated.Image
+                      source={{ uri: post.media_url }}
+                      style={[styles.fullscreenImage, animatedStyle]}
+                      resizeMode="contain"
+                    />
+                  </Animated.View>
+                </PinchGestureHandler>
+              </Animated.View>
+            </PanGestureHandler>
+          </View>
+        </GestureHandlerRootView>
       </Modal>
     </View>
   );
@@ -706,136 +844,188 @@ export default function PostDetailsScreen() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
-        justifyContent: 'center',
+        backgroundColor: '#F8FAFC',
+    },
+    backgroundGradient: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 200,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 20,
+        paddingHorizontal: 24,
         paddingVertical: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        backgroundColor: 'transparent',
     },
     backButton: {
-        padding: 8,
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        borderRadius: 20,
+        padding: 12,
     },
     title: {
-        fontSize: 20,
+        fontSize: 22,
         fontFamily: 'Poppins-Bold',
-        color: '#1F2937',
+        color: '#FFFFFF',
         marginLeft: 16,
+        textShadowColor: 'rgba(0, 0, 0, 0.3)',
+        textShadowOffset: { width: 0, height: 2 },
+        textShadowRadius: 4,
+        letterSpacing: 0.3,
     },
     postCard: {
-        padding: 20,
+        backgroundColor: '#FFFFFF',
+        margin: 24,
+        padding: 24,
+        borderRadius: 28,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.15,
+        shadowRadius: 28,
+        elevation: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 92, 246, 0.08)',
     },
     postHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
+        marginBottom: 20,
     },
     avatar: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         marginRight: 16,
+        borderWidth: 2,
+        borderColor: 'rgba(139, 92, 246, 0.2)',
     },
     authorInfo: {
         flex: 1,
     },
     authorName: {
-        fontSize: 16,
+        fontSize: 17,
         fontFamily: 'Poppins-SemiBold',
         color: '#1F2937',
+        letterSpacing: 0.3,
     },
     timestamp: {
         fontSize: 14,
-        fontFamily: 'Inter-Regular',
-        color: '#6B7280',
+        fontFamily: 'Inter-Medium',
+        color: '#8B5CF6',
+        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
+        overflow: 'hidden',
+        alignSelf: 'flex-start',
+        marginTop: 4,
     },
     postText: {
-        fontSize: 16,
+        fontSize: 17,
         fontFamily: 'Inter-Regular',
-        color: '#1F2937',
-        lineHeight: 24,
-        marginBottom: 16,
+        color: '#374151',
+        lineHeight: 26,
+        marginBottom: 20,
+        letterSpacing: 0.2,
     },
     postImage: {
         width: '100%',
-        height: 300,
-        borderRadius: 16,
-        marginBottom: 16,
+        height: 320,
+        borderRadius: 20,
+        marginBottom: 20,
     },
     engagementStats: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        paddingVertical: 12,
+        paddingVertical: 16,
         borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
+        borderTopColor: 'rgba(139, 92, 246, 0.1)',
         borderBottomWidth: 1,
-        borderBottomColor: '#E5E7EB',
+        borderBottomColor: 'rgba(139, 92, 246, 0.1)',
     },
     engagementActions: {
         flexDirection: 'row',
         justifyContent: 'space-around',
-        paddingVertical: 10,
+        paddingVertical: 16,
     },
     engagementButton: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        gap: 10,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderRadius: 16,
+        backgroundColor: 'rgba(139, 92, 246, 0.05)',
     },
     engagementButtonText: {
-        fontSize: 15,
-        fontFamily: 'Poppins-Medium',
+        fontSize: 16,
+        fontFamily: 'Poppins-SemiBold',
         color: '#1F2937',
+        letterSpacing: 0.3,
     },
     engagementText: {
-        fontSize: 15,
-        fontFamily: 'Inter-Regular',
+        fontSize: 16,
+        fontFamily: 'Inter-SemiBold',
         color: '#6B7280',
+        letterSpacing: 0.2,
     },
     likedText: {
-        color: '#F472B6',
+        color: '#EF4444',
     },
     commentsList: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 24,
     },
     commentContainer: {
         flexDirection: 'row',
-        marginVertical: 8,
+        marginVertical: 12,
     },
     commentAvatar: {
-        width: 32,
-        height: 32,
-        borderRadius: 16,
-        marginRight: 8,
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        marginRight: 12,
+        borderWidth: 2,
+        borderColor: 'rgba(139, 92, 246, 0.2)',
     },
     commentBubble: {
-        padding: 12,
-        borderRadius: 16,
+        padding: 16,
+        borderRadius: 20,
         flex: 1,
         backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 3,
+        borderWidth: 1,
+        borderColor: 'rgba(139, 92, 246, 0.08)',
     },
     commentAuthor: {
-        fontSize: 14,
+        fontSize: 15,
         fontFamily: 'Poppins-SemiBold',
         color: '#1F2937',
+        letterSpacing: 0.2,
     },
     commentText: {
-        fontSize: 15,
+        fontSize: 16,
         fontFamily: 'Inter-Regular',
-        color: '#1F2937',
+        color: '#374151',
+        lineHeight: 22,
+        marginTop: 4,
+        letterSpacing: 0.1,
     },
     commentActions: {
       flexDirection: 'row',
-      marginTop: 8,
-      gap: 16,
+      marginTop: 12,
+      gap: 20,
     },
     commentActionText: {
-      fontSize: 13,
-      fontFamily: 'Inter-Medium',
-      color: '#6B7280',
+      fontSize: 14,
+      fontFamily: 'Inter-SemiBold',
+      color: '#8B5CF6',
+      letterSpacing: 0.2,
     },
     replyCommentContainer: {
       marginLeft: 40, // Indent replies
@@ -858,34 +1048,48 @@ const styles = StyleSheet.create({
       fontSize: 14,
     },
     commentInputContainer: {
-        flexDirection: 'column', // Changed to column for replyingTo
-        alignItems: 'flex-start', // Align items to start
-        padding: 16,
+        flexDirection: 'column',
+        alignItems: 'flex-start',
+        padding: 20,
         borderTopWidth: 1,
-        borderTopColor: '#E5E7EB',
+        borderTopColor: 'rgba(139, 92, 246, 0.1)',
         backgroundColor: '#FFFFFF',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.05,
+        shadowRadius: 8,
+        elevation: 5,
     },
     commentInput: {
         flex: 1,
-        backgroundColor: '#F3F4F6',
+        backgroundColor: '#F8FAFC',
         color: '#1F2937',
-        paddingVertical: 12,
-        paddingHorizontal: 16,
+        paddingVertical: 16,
+        paddingHorizontal: 20,
         borderRadius: 24,
-        marginRight: 12,
+        marginRight: 16,
         fontSize: 16,
         fontFamily: 'Inter-Regular',
+        borderWidth: 2,
+        borderColor: '#E5E7EB',
+        letterSpacing: 0.2,
     },
     sendButton: {
-        backgroundColor: '#3B82F6',
-        paddingVertical: 12,
-        paddingHorizontal: 24,
+        backgroundColor: '#8B5CF6',
+        paddingVertical: 16,
+        paddingHorizontal: 28,
         borderRadius: 24,
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     sendButtonText: {
         color: '#FFFFFF',
         fontFamily: 'Poppins-SemiBold',
         fontSize: 16,
+        letterSpacing: 0.3,
     },
     authorSection: {
         flexDirection: 'row',
@@ -1049,5 +1253,250 @@ const styles = StyleSheet.create({
       fontSize: 14,
       color: '#6B7280',
       lineHeight: 18,
+    },
+    // Modern Facebook-style meta row styles
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+      gap: 8,
+    },
+    timestampText: {
+      fontSize: 13,
+      fontFamily: 'Inter-Regular',
+      color: '#65676B',
+    },
+    publicBadge: {
+      backgroundColor: 'rgba(139, 92, 246, 0.1)',
+      paddingHorizontal: 6,
+      paddingVertical: 2,
+      borderRadius: 8,
+    },
+    publicText: {
+      fontSize: 11,
+      fontFamily: 'Inter-Medium',
+      color: '#8B5CF6',
+    },
+    // Modern Facebook-style reaction bar
+    reactionBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingVertical: 12,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E4E6EA',
+    },
+    reactionEmojis: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    emojiGroup: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#F0F2F5',
+      borderRadius: 12,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      marginRight: 8,
+    },
+    emoji: {
+      fontSize: 16,
+      marginHorizontal: -2,
+    },
+    reactionCount: {
+      fontSize: 15,
+      fontFamily: 'Inter-Regular',
+      color: '#65676B',
+    },
+    commentCount: {
+      fontSize: 15,
+      fontFamily: 'Inter-Regular',
+      color: '#65676B',
+    },
+    // Modern Facebook-style action buttons
+    actionButtonsContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      paddingVertical: 8,
+      borderTopWidth: 1,
+      borderTopColor: '#E4E6EA',
+    },
+    actionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      flex: 1,
+      marginHorizontal: 4,
+      gap: 8,
+    },
+    actionButtonText: {
+      fontSize: 15,
+      fontFamily: 'Inter-SemiBold',
+      color: '#65676B',
+    },
+    likedActionText: {
+      color: '#EF4444',
+    },
+    // Facebook-style post design
+    facebookPostCard: {
+      backgroundColor: '#FFFFFF',
+      margin: 0,
+      marginHorizontal: 0,
+      marginBottom: 8,
+      borderRadius: 0,
+      shadowColor: 'transparent',
+      shadowOffset: { width: 0, height: 0 },
+      shadowOpacity: 0,
+      shadowRadius: 0,
+      elevation: 0,
+      borderWidth: 0,
+      borderTopWidth: 1,
+      borderBottomWidth: 1,
+      borderTopColor: '#E4E6EA',
+      borderBottomColor: '#E4E6EA',
+    },
+    facebookPostHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+    },
+    facebookAuthorSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flex: 1,
+    },
+    facebookAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      marginRight: 12,
+    },
+    facebookAuthorInfo: {
+      flex: 1,
+    },
+    facebookAuthorName: {
+      fontSize: 15,
+      fontFamily: 'Inter-SemiBold',
+      color: '#1C1E21',
+      fontWeight: '600',
+    },
+    facebookMetaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 2,
+    },
+    facebookTimestamp: {
+      fontSize: 13,
+      fontFamily: 'Inter-Regular',
+      color: '#65676B',
+    },
+    facebookDot: {
+      fontSize: 13,
+      color: '#65676B',
+      marginHorizontal: 4,
+    },
+    facebookPublicIcon: {
+      marginLeft: 2,
+    },
+    facebookPublicText: {
+      fontSize: 12,
+    },
+    facebookLocationContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 4,
+    },
+    facebookLocationText: {
+      fontSize: 13,
+      fontFamily: 'Inter-Regular',
+      color: '#65676B',
+      marginLeft: 4,
+    },
+    facebookMoreButton: {
+      padding: 8,
+      borderRadius: 20,
+    },
+    facebookPostText: {
+      fontSize: 15,
+      fontFamily: 'Inter-Regular',
+      color: '#1C1E21',
+      lineHeight: 20,
+      paddingHorizontal: 16,
+      paddingBottom: 12,
+    },
+    facebookMediaContainer: {
+      marginBottom: 12,
+    },
+    facebookPostImage: {
+      width: '100%',
+      height: 300,
+      resizeMode: 'cover',
+    },
+    facebookReactionBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: '#E4E6EA',
+    },
+    facebookReactionSection: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    facebookEmojiContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 6,
+    },
+    facebookEmoji: {
+      fontSize: 16,
+      marginLeft: -2,
+    },
+    facebookReactionText: {
+      fontSize: 15,
+      fontFamily: 'Inter-Regular',
+      color: '#65676B',
+    },
+    facebookEngagementStats: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12,
+    },
+    facebookEngagementText: {
+      fontSize: 15,
+      fontFamily: 'Inter-Regular',
+      color: '#65676B',
+    },
+    facebookActionBar: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+      paddingVertical: 4,
+      paddingHorizontal: 16,
+    },
+    facebookActionButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 6,
+      flex: 1,
+      gap: 6,
+    },
+    facebookActionText: {
+      fontSize: 15,
+      fontFamily: 'Inter-SemiBold',
+      color: '#65676B',
+      fontWeight: '600',
+    },
+    facebookLikedText: {
+      color: '#E31E24',
     },
 });

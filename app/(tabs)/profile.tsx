@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { User, Settings, Heart, Shield, CircleHelp as HelpCircle, LogOut, Camera, MessageSquare, UserPlus, Trophy, Edit } from 'lucide-react-native';
+import { User, Settings, Heart, Shield, HelpCircle, LogOut, Camera, MessageSquare, UserPlus, Trophy, Edit } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,16 +24,10 @@ import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 const { width } = Dimensions.get('window');
 
 interface UserStats {
-  friends: number;
+  posts: number;
   followers: number;
   following: number;
 }
-
-const mockUserStats: UserStats = {
-  friends: 256,
-  followers: 1024,
-  following: 345,
-};
 
 const mockPlacesVisited = [
   { id: '1', name: 'Historic Cathedral Square', image: 'https://images.pexels.com/photos/161841/prague-cathedral-architecture-building-161841.jpeg' },
@@ -51,13 +45,19 @@ const PLACEHOLDER_IMAGE_URL = require('@/assets/images/noplaceimage.png');
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, loading: authLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [photosShared, setPhotosShared] = useState<{ id: string; image: string }[]>([]);
   const [postsLoading, setPostsLoading] = useState(true);
   const [placesVisited, setPlacesVisited] = useState<PlaceVisited[]>([]);
   const [placesLoading, setPlacesLoading] = useState(true);
+  const [userStats, setUserStats] = useState<UserStats>({
+    posts: 0,
+    followers: 0,
+    following: 0,
+  });
+  const [statsLoading, setStatsLoading] = useState(true);
 
   const [profile, setProfile] = useState<any>(null);
   const [editableName, setEditableName] = useState('');
@@ -102,28 +102,90 @@ export default function ProfileScreen() {
     }
   };
 
+  const fetchUserStats = async () => {
+    if (!user) {
+      setStatsLoading(false);
+      return;
+    }
+
+    setStatsLoading(true);
+    try {
+      // Fetch posts count
+      const { count: postsCount, error: postsError } = await supabase
+        .from('posts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id);
+
+      if (postsError) throw postsError;
+
+      const { count: followersCount, error: followersError } = await supabase
+      .from('followers')
+      .select('*', { count: 'exact', head: true })
+      .eq('following_id', user.id);
+
+    if (followersError) throw followersError;
+
+    const { count: followingCount, error: followingError } = await supabase
+      .from('followers')
+      .select('*', { count: 'exact', head: true })
+      .eq('follower_id', user.id);
+
+    if (followingError) throw followingError;
+
+
+      setUserStats({
+        posts: postsCount || 0,
+        followers: followersCount || 0,
+        following: followingCount || 0,
+      });
+    } catch (error: any) {
+      console.error('Error fetching user stats:', error.message);
+      setUserStats({
+        posts: 0,
+        followers: 0,
+        following: 0,
+      });
+    } finally {
+      setStatsLoading(false);
+    }
+  };
+
   useFocusEffect(
     React.useCallback(() => {
+      console.log('ProfileScreen - useFocusEffect called');
+      console.log('ProfileScreen - user from AuthContext:', user ? { id: user.id, email: user.email } : 'null');
+      
       const fetchProfile = async () => {
         if (user) {
+          console.log('ProfileScreen - Fetching profile for user ID:', user.id);
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
             .eq('id', user.id)
             .single();
 
+          if (error) {
+            console.error('ProfileScreen - Error fetching profile:', error);
+          }
+
           if (data) {
+            console.log('ProfileScreen - Profile data fetched:', data);
             setProfile(data);
             setEditableName(data.full_name || '');
             setEditableBio(data.bio || '');
             setEditableAvatar(data.avatar_url || '');
             setEditableCoverPhoto(data.cover_photo_url || '');
+          } else {
+            console.log('ProfileScreen - No profile data found');
           }
+        } else {
+          console.log('ProfileScreen - No user available, skipping profile fetch');
         }
       };
 
       fetchProfile();
       fetchUserPosts();
+      fetchUserStats();
     }, [user])
   );
 
@@ -223,18 +285,21 @@ export default function ProfileScreen() {
       let avatarUrl = editableAvatar;
       let coverPhotoUrl = editableCoverPhoto;
 
+      // Add timestamp for cache busting
+      const timestamp = Date.now();
+
       if (editableAvatar !== profile?.avatar_url && !editableAvatar.startsWith('http')) {
-        const avatarPath = `public/${user?.id}/avatar.jpg`;
+        const avatarPath = `public/${user?.id}/avatar_${timestamp}.jpg`;
         await uploadImage(editableAvatar, avatarPath, 'avatars');
         const { data: publicUrlData } = supabase.storage.from('avatars').getPublicUrl(avatarPath);
-        avatarUrl = publicUrlData.publicUrl;
+        avatarUrl = `${publicUrlData.publicUrl}?t=${timestamp}`;
       }
 
       if (editableCoverPhoto !== profile?.cover_photo_url && !editableCoverPhoto.startsWith('http')) {
-        const coverPath = `public/${user?.id}/cover.jpg`;
+        const coverPath = `public/${user?.id}/cover_${timestamp}.jpg`;
         await uploadImage(editableCoverPhoto, coverPath, 'covers');
         const { data: publicUrlData } = supabase.storage.from('covers').getPublicUrl(coverPath);
-        coverPhotoUrl = publicUrlData.publicUrl;
+        coverPhotoUrl = `${publicUrlData.publicUrl}?t=${timestamp}`;
       }
 
       const { error } = await supabase
@@ -250,6 +315,20 @@ export default function ProfileScreen() {
       if (error) {
         throw error;
       }
+
+      // Force update the state with the new URLs
+      setProfile({
+        ...profile,
+        full_name: editableName,
+        bio: editableBio,
+        avatar_url: avatarUrl,
+        cover_photo_url: coverPhotoUrl,
+      });
+      
+      setEditableName(editableName);
+      setEditableBio(editableBio);
+      setEditableAvatar(avatarUrl);
+      setEditableCoverPhoto(coverPhotoUrl);
 
       Alert.alert('Success', 'Profile updated successfully!');
       setIsEditing(false);
@@ -268,29 +347,92 @@ export default function ProfileScreen() {
     setIsEditing(false);
   };
 
+  // Show loading state while auth is initializing
+  if (authLoading) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#8B5CF6', '#7C3AED', '#6366F1']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.backgroundGradient}
+        />
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.loadingText}>Loading your profile...</Text>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
+  // Show sign-in prompt when user is not authenticated
+  if (!user) {
+    return (
+      <View style={styles.container}>
+        <LinearGradient
+          colors={['#8B5CF6', '#7C3AED', '#6366F1']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.backgroundGradient}
+        />
+        <SafeAreaView style={{ flex: 1 }}>
+          <View style={styles.notAuthenticatedContainer}>
+            <User size={64} color="rgba(255, 255, 255, 0.8)" strokeWidth={1.5} />
+            <Text style={styles.notAuthenticatedTitle}>Sign In Required</Text>
+            <Text style={styles.notAuthenticatedSubtitle}>
+              Please sign in to view and edit your profile
+            </Text>
+            <TouchableOpacity 
+              style={styles.signInButton}
+              onPress={() => router.push('/signin' as any)}
+            >
+              <Text style={styles.signInButtonText}>Sign In</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#7C3AED', '#4F46E5']}
+        colors={['#8B5CF6', '#7C3AED', '#6366F1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.backgroundGradient}
       />
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.topHeader}>
           <Text style={styles.topHeaderTitle}>Profile</Text>
-          <TouchableOpacity onPress={handleSignOut}>
-            <LogOut size={28} color="#FFFFFF" />
+          <TouchableOpacity onPress={handleSignOut} style={styles.signOutButton}>
+            <LogOut size={24} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
         <ScrollView showsVerticalScrollIndicator={false}>
           <View style={styles.header}>
-            <Image source={{ uri: editableCoverPhoto }} style={styles.coverPhoto} />
+            <Image 
+              source={{ 
+                uri: editableCoverPhoto || 'https://via.placeholder.com/400x240/8B5CF6/FFFFFF?text=Cover+Photo' 
+              }} 
+              style={styles.coverPhoto} 
+              key={editableCoverPhoto} // Force re-render when URI changes
+            />
             {isEditing && (
               <TouchableOpacity style={styles.editCoverButton} onPress={() => pickImage('cover')}>
                 <Camera size={20} color="#FFFFFF" strokeWidth={2.5} />
               </TouchableOpacity>
             )}
             <View style={styles.avatarContainer}>
-              <Image source={{ uri: editableAvatar }} style={styles.avatar} />
+              <Image 
+                source={{ 
+                  uri: editableAvatar || 'https://via.placeholder.com/180x180/8B5CF6/FFFFFF?text=Avatar' 
+                }} 
+                style={styles.avatar} 
+                key={editableAvatar} // Force re-render when URI changes
+              />
               {isEditing && (
                 <TouchableOpacity style={styles.cameraButton} onPress={() => pickImage('avatar')}>
                   <Camera size={18} color="#FFFFFF" strokeWidth={2.5} />
@@ -359,15 +501,27 @@ export default function ProfileScreen() {
 
           <View style={styles.statsContainer}>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{mockUserStats.friends}</Text>
-              <Text style={styles.statLabel}>posts</Text>
+              {statsLoading ? (
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              ) : (
+                <Text style={styles.statNumber}>{userStats.posts}</Text>
+              )}
+              <Text style={styles.statLabel}>Posts</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{mockUserStats.followers}</Text>
+              {statsLoading ? (
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              ) : (
+                <Text style={styles.statNumber}>{userStats.followers}</Text>
+              )}
               <Text style={styles.statLabel}>Followers</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={styles.statNumber}>{mockUserStats.following}</Text>
+              {statsLoading ? (
+                <ActivityIndicator size="small" color="#8B5CF6" />
+              ) : (
+                <Text style={styles.statNumber}>{userStats.following}</Text>
+              )}
               <Text style={styles.statLabel}>Following</Text>
             </View>
           </View>
@@ -412,6 +566,10 @@ export default function ProfileScreen() {
                 <Text style={styles.settingLabel}>Edit Profile</Text>
               </TouchableOpacity>
             )}
+            <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/chats')}>
+              <MessageSquare size={24} color="#A78BFA" strokeWidth={2.5} />
+              <Text style={styles.settingLabel}>Messages</Text>
+            </TouchableOpacity>
             <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/badges')}>
               <Image source={{ uri: 'https://cdn-icons-png.flaticon.com/512/2921/2921124.png' }} style={styles.badgeIcon} />
               <Text style={styles.settingLabel}>Badges</Text>
@@ -424,11 +582,11 @@ export default function ProfileScreen() {
               <Shield size={24} color="#A78BFA" strokeWidth={2.5} />
               <Text style={styles.settingLabel}>Achievements</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.settingButton}>
+            <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/saved-places' as any)}>
               <Heart size={24} color="#A78BFA" strokeWidth={2.5} />
               <Text style={styles.settingLabel}>Saved Places</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.settingButton}>
+            <TouchableOpacity style={styles.settingButton} onPress={() => router.push('/privacy-settings' as any)}>
               <Settings size={24} color="#A78BFA" strokeWidth={2.5} />
               <Text style={styles.settingLabel}>Settings & Privacy</Text>
             </TouchableOpacity>
@@ -455,54 +613,64 @@ const styles = StyleSheet.create({
   topHeaderTitle: {
     fontSize: 22,
     fontFamily: 'Poppins-Bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  signOutButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    padding: 12,
   },
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F8FAFC',
   },
   backgroundGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 400,
+    height: 420,
   },
   header: {
     backgroundColor: 'transparent',
   },
   coverPhoto: {
     width: '100%',
-    height: 220,
+    height: 240,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
   },
   avatarContainer: {
     alignItems: 'center',
-    marginTop: -80,
+    marginTop: -90,
   },
   avatar: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 6,
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    borderWidth: 8,
     borderColor: '#FFFFFF',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 12,
   },
   cameraButton: {
     position: 'absolute',
-    bottom: 8,
-    right: 115,
-    backgroundColor: '#3B82F6',
-    borderRadius: 24,
-    padding: 10,
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    bottom: 12,
+    right: 100,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 28,
+    padding: 14,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
   editCoverButton: {
     position: 'absolute',
@@ -594,68 +762,71 @@ const styles = StyleSheet.create({
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B82F6',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
+    backgroundColor: '#8B5CF6',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 20,
     flex: 1,
     justifyContent: 'center',
-    shadowColor: '#3B82F6',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
-    gap: 8,
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+    gap: 12,
   },
   saveButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#22C55E',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
+    backgroundColor: '#10B981',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 20,
     flex: 1,
     justifyContent: 'center',
-    shadowColor: '#22C55E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
-    gap: 8,
+    shadowColor: '#10B981',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+    gap: 12,
   },
   cancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#EF4444',
-    paddingHorizontal: 28,
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 20,
     flex: 1,
     justifyContent: 'center',
     shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 4,
-    gap: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
+    gap: 12,
   },
   actionButtonText: {
     fontFamily: 'Poppins-SemiBold',
-    fontSize: 16,
+    fontSize: 17,
+    letterSpacing: 0.3,
   },
   statsContainer: {
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     justifyContent: 'space-around',
-    padding: 20,
-    marginHorizontal: 20,
-    borderRadius: 20,
+    padding: 24,
+    marginHorizontal: 24,
+    borderRadius: 28,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 28,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.08)',
   },
   statItem: {
     alignItems: 'center',
@@ -672,37 +843,46 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: '#FFFFFF',
-    marginHorizontal: 20,
-    marginTop: 20,
-    borderRadius: 20,
-    padding: 20,
+    marginHorizontal: 24,
+    marginTop: 24,
+    borderRadius: 28,
+    padding: 24,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 28,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.08)',
   },
   sectionTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: 'Poppins-Bold',
     color: '#1F2937',
-    marginBottom: 16,
+    marginBottom: 20,
+    letterSpacing: 0.3,
   },
   placeCard: {
-    marginRight: 16,
-    width: 160,
+    marginRight: 20,
+    width: 180,
   },
   placeImage: {
-    width: 160,
-    height: 120,
-    borderRadius: 12,
+    width: 180,
+    height: 140,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   placeName: {
-    marginTop: 12,
-    fontFamily: 'Inter-Medium',
-    fontSize: 15,
+    marginTop: 16,
+    fontFamily: 'Inter-SemiBold',
+    fontSize: 16,
     color: '#1F2937',
+    letterSpacing: 0.2,
   },
   photoGrid: {
     flexDirection: 'row',
@@ -710,33 +890,93 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   photo: {
-    width: (width - 100) / 2,
-    height: (width - 100) / 2,
-    borderRadius: 12,
-    marginBottom: 12,
+    width: (width - 120) / 2,
+    height: (width - 120) / 2,
+    borderRadius: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   settingButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 4,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 8,
+    backgroundColor: 'rgba(139, 92, 246, 0.05)',
   },
   settingLabel: {
-    fontSize: 17,
-    fontFamily: 'Inter-Medium',
+    fontSize: 18,
+    fontFamily: 'Inter-SemiBold',
     color: '#1F2937',
     marginLeft: 20,
+    letterSpacing: 0.2,
   },
   badgeIcon: {
     width: 24,
     height: 24,
   },
   noPhotosText: {
-    color: '#6B7280',
-    textAlign: 'center',
-    fontFamily: 'Inter-Regular',
     fontSize: 16,
-    marginTop: 10,
+    fontFamily: 'Inter-Regular',
+    color: '#9CA3AF',
+    textAlign: 'center',
+    marginTop: 20,
+  },
+  // Loading and authentication states
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  loadingText: {
+    fontSize: 18,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  notAuthenticatedContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  notAuthenticatedTitle: {
+    fontSize: 28,
+    fontFamily: 'Poppins-Bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginTop: 24,
+    marginBottom: 12,
+  },
+  notAuthenticatedSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 32,
+  },
+  signInButton: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 32,
+    paddingVertical: 16,
+    borderRadius: 25,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  signInButtonText: {
+    fontSize: 18,
+    fontFamily: 'Poppins-SemiBold',
+    color: '#8B5CF6',
+    textAlign: 'center',
   },
 });

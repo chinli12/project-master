@@ -1,12 +1,30 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, Alert } from 'react-native';
-import { Video, ResizeMode } from 'expo-av';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity, Image, Alert, Platform } from 'react-native';
+import { Video, ResizeMode, AVPlaybackStatus, Audio } from 'expo-av';
 import { Play, Pause, Heart, MessageCircle, Share } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { supabase } from '../lib/supabase';
 import CommentModal from './CommentModal';
 
 const { width, height } = Dimensions.get('window');
+
+// Configure audio for iOS and Android to play in silent mode
+const configureAudio = async () => {
+  try {
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      allowsRecordingIOS: false,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+  } catch (error) {
+    console.warn('Failed to configure audio:', error);
+  }
+};
+
+// Configure audio on component load
+configureAudio();
 
 interface VideoPostProps {
   post: {
@@ -22,6 +40,8 @@ interface VideoPostProps {
 }
 
 export default function VideoPost({ post, isPlaying: isPlayingProp }: VideoPostProps) {
+
+
   const videoRef = useRef<Video>(null);
   const [isPlaying, setIsPlaying] = useState(isPlayingProp);
   const [isCommentModalVisible, setCommentModalVisible] = useState(false);
@@ -29,10 +49,103 @@ export default function VideoPost({ post, isPlaying: isPlayingProp }: VideoPostP
   const [likes, setLikes] = useState(0);
   const [comments, setComments] = useState(0);
   const [shares, setShares] = useState(0);
+  const [status, setStatus] = useState<AVPlaybackStatus>();
 
+  // Handle play/pause when isPlayingProp changes
   useEffect(() => {
-    setIsPlaying(isPlayingProp);
+    if (!videoRef.current) return;
+    
+    const handleVideoPlayback = async () => {
+      try {
+        // Reconfigure audio before attempting playback
+        await configureAudio();
+        
+        if (isPlayingProp) {
+          await videoRef.current?.playAsync();
+        } else {
+          await videoRef.current?.pauseAsync();
+        }
+        setIsPlaying(isPlayingProp);
+      } catch (error) {
+        console.error('Error controlling video playback:', error);
+        
+        // Handle audio focus exception specifically
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage?.includes('audiofocusnotacquiredexception') || 
+            errorMessage?.includes('audio focus')) {
+          console.log('Audio focus issue detected, attempting recovery...');
+          
+          // Try to release and reconfigure audio
+          try {
+            await Audio.setAudioModeAsync({
+              playsInSilentModeIOS: true,
+              allowsRecordingIOS: false,
+              staysActiveInBackground: false,
+              shouldDuckAndroid: false, // Try without ducking first
+              playThroughEarpieceAndroid: false,
+            });
+            
+            // Wait a bit longer before retry
+            setTimeout(async () => {
+              try {
+                if (isPlayingProp && videoRef.current) {
+                  await videoRef.current.playAsync();
+                  setIsPlaying(true);
+                }
+              } catch (retryError) {
+                console.error('Audio focus retry failed:', retryError);
+                // Fallback: try muted playback
+                try {
+                  if (videoRef.current) {
+                    await videoRef.current.setIsMutedAsync(true);
+                    await videoRef.current.playAsync();
+                    setIsPlaying(true);
+                    console.log('Playing video in muted mode due to audio focus issues');
+                  }
+                } catch (mutedError) {
+                  console.error('Even muted playback failed:', mutedError);
+                }
+              }
+            }, 1000);
+          } catch (configError) {
+            console.error('Failed to reconfigure audio:', configError);
+          }
+        } else {
+          // Regular retry for other errors
+          setTimeout(async () => {
+            try {
+              if (isPlayingProp) {
+                await videoRef.current?.playAsync();
+              } else {
+                await videoRef.current?.pauseAsync();
+              }
+              setIsPlaying(isPlayingProp);
+            } catch (retryError) {
+              console.error('Retry failed:', retryError);
+            }
+          }, 500);
+        }
+      }
+    };
+    
+    handleVideoPlayback();
   }, [isPlayingProp]);
+
+  // When the video finishes loading and this post should be playing, ensure playback starts
+  useEffect(() => {
+    const startIfReady = async () => {
+      try {
+        if (isPlayingProp && status && 'isLoaded' in status && status.isLoaded && !('isPlaying' in status && status.isPlaying)) {
+          await configureAudio();
+          await videoRef.current?.playAsync();
+          setIsPlaying(true);
+        }
+      } catch (e) {
+        console.error('Auto-start on load failed:', e);
+      }
+    };
+    startIfReady();
+  }, [status, isPlayingProp]);
 
   useEffect(() => {
     const fetchPostDetails = async () => {
@@ -69,14 +182,39 @@ export default function VideoPost({ post, isPlaying: isPlayingProp }: VideoPostP
     fetchPostDetails();
   }, [post.id]);
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     if (videoRef.current) {
-      if (isPlaying) {
-        videoRef.current.pauseAsync();
-      } else {
-        videoRef.current.playAsync();
+      try {
+        // Reconfigure audio before attempting playback
+        await configureAudio();
+        
+        if (isPlaying) {
+          await videoRef.current.pauseAsync();
+        } else {
+          await videoRef.current.playAsync();
+        }
+        setIsPlaying(!isPlaying);
+      } catch (error) {
+        console.error('Error toggling play/pause:', error);
+        
+        // Handle audio focus exception
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage?.includes('audiofocusnotacquiredexception') || 
+            errorMessage?.includes('audio focus')) {
+          console.log('Audio focus issue in manual play/pause, trying muted playback...');
+          
+          try {
+            if (!isPlaying && videoRef.current) {
+              await videoRef.current.setIsMutedAsync(true);
+              await videoRef.current.playAsync();
+              setIsPlaying(true);
+              console.log('Playing video in muted mode due to audio focus issues');
+            }
+          } catch (mutedError) {
+            console.error('Even muted manual playback failed:', mutedError);
+          }
+        }
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -126,15 +264,46 @@ export default function VideoPost({ post, isPlaying: isPlayingProp }: VideoPostP
         onPress={handlePlayPause}
         style={styles.videoContainer}
       >
-        <Video
-          ref={videoRef}
-          source={{ uri: post.media_url! }}
-          style={styles.video}
-          shouldPlay={isPlaying}
-          isLooping
-          resizeMode={ResizeMode.COVER}
-          onError={(error: any) => console.error('Video Error:', error)}
-        />
+        <View style={styles.videoContainer}>
+          <Video
+            ref={videoRef}
+            style={styles.video}
+            source={{ uri: post.media_url || '' }}
+            resizeMode={ResizeMode.COVER}
+            isLooping
+            shouldPlay={isPlaying}
+            useNativeControls={false}
+            volume={1.0}
+            isMuted={false}
+            onPlaybackStatusUpdate={(playbackStatus) => {
+              setStatus(playbackStatus);
+              if (playbackStatus.isLoaded) {
+                setIsPlaying(playbackStatus.isPlaying);
+              }
+            }}
+            onError={(error) => {
+              console.error('Video playback error:', error);
+              // Surface more detail in dev
+              try {
+                const errObj = (error as any) || {};
+                console.log('Video error details:', JSON.stringify(errObj));
+              } catch {}
+              Alert.alert('Video Error', 'Failed to load video. Please try again.');
+            }}
+            onLoad={async () => {
+              console.log('Video loaded successfully');
+              try {
+                if (isPlayingProp) {
+                  await configureAudio();
+                  await videoRef.current?.playAsync();
+                  setIsPlaying(true);
+                }
+              } catch (e) {
+                console.warn('onLoad play attempt failed:', e);
+              }
+            }}
+          />
+        </View>
       </TouchableOpacity>
 
       <LinearGradient
@@ -226,6 +395,10 @@ const styles = StyleSheet.create({
     right: 80,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    padding: 12,
+    borderRadius: 12,
+    marginBottom: 10,
   },
   avatar: {
     width: 48,

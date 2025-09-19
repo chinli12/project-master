@@ -103,3 +103,66 @@ CREATE POLICY "Users can update locations for their own trips." ON trip_location
 CREATE POLICY "Users can delete locations for their own trips." ON trip_locations FOR DELETE USING (
   auth.uid() = (SELECT user_id FROM trip_plans WHERE id = trip_plan_id)
 );
+-- Create followers table with proper structure
+CREATE TABLE IF NOT EXISTS followers (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  follower_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  following_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(follower_id, following_id)
+);
+
+-- Enable RLS and create policies
+ALTER TABLE followers ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public followers are viewable by everyone." ON followers FOR SELECT USING (true);
+CREATE POLICY "Users can follow others." ON followers FOR INSERT WITH CHECK (auth.uid() = follower_id);
+CREATE POLICY "Users can unfollow others." ON followers FOR DELETE USING (auth.uid() = follower_id);
+
+-- Create comment_likes table for tracking comment likes
+CREATE TABLE IF NOT EXISTS comment_likes (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  comment_id UUID NOT NULL REFERENCES comments(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(comment_id, user_id) -- Prevent duplicate likes
+);
+
+CREATE INDEX IF NOT EXISTS idx_comment_likes_comment_id ON comment_likes(comment_id);
+CREATE INDEX IF NOT EXISTS idx_comment_likes_user_id ON comment_likes(user_id);
+CREATE INDEX IF NOT EXISTS idx_comment_likes_created_at ON comment_likes(created_at DESC);
+
+-- Enable RLS and create policies
+ALTER TABLE comment_likes ENABLE ROW LEVEL SECURITY;
+-- (Full policies included in file)
+create policy "Enable delete for users based on user_id"
+on "public"."comment_likes"
+for delete using (
+  (select auth.uid()) = user_id
+);
+create policy "Enable insert for authenticated users only"
+on "public"."comment_likes"
+for insert to authenticated
+with check (true);
+
+create policy "Enable insert for users based on user_id"
+on "public"."comment_likes"
+for insert with check (
+  (select auth.uid()) = user_id
+);
+create policy "Enable read access for all users"
+on "public"."comment_likes"
+for select using (true);
+
+create policy "Stories are live for a day"
+on "public"."comment_likes"
+for select using (
+  created_at > (current_timestamp - interval '1 day')
+);
+
+create policy "Enable users to view their own data only"
+on "public"."comment_likes"
+for select
+to authenticated
+using (
+  (select auth.uid()) = user_id
+);

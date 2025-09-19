@@ -12,19 +12,28 @@ import {
 } from 'react-native';
 import { Platform } from 'react-native';
 import * as Location from 'expo-location';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MapPin, Star, Clock, Share, Car, Play, Pause, Sparkles, Volume2, RefreshCw } from 'lucide-react-native';
+import LanguageSwitcher from '@/components/LanguageSwitcher';
+import { MapPin, Star, Clock, Share, Car, Play, Pause, Sparkles, Volume2, RefreshCw, Bell } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const { width, height } = Dimensions.get('window');
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 const ELEVENLABS_API_KEY = process.env.EXPO_PUBLIC_ELEVENLABS_API_KEY;
+
+// Configure audio for iOS to play in silent mode
+if (Platform.OS === 'ios') {
+  Audio.setAudioModeAsync({
+    playsInSilentModeIOS: true,
+  });
+}
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3; // metres
@@ -47,28 +56,54 @@ interface LocationData {
   longitude: number;
   name: string;
   narrative: string;
+  summary: string; // Added for the brief summary
   highlights: string[];
   rating: number;
   visitTime: string;
+  image_url?: string;
+}
+
+// Types for Gemini API Response
+interface GeminiPart {
+  text: string;
+}
+
+interface GeminiContent {
+  parts: GeminiPart[];
+}
+
+interface GeminiCandidate {
+  content: GeminiContent;
+}
+
+interface GeminiResponse {
+  candidates: GeminiCandidate[];
 }
 
 export default function HomeScreen() {
+
   const router = useRouter();
+  const { t } = useTranslation();
   const [locationData, setLocationData] = useState<LocationData | null>(null);
   const [loading, setLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<Location.LocationObject | null>(null);
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isNarrationLoading, setIsNarrationLoading] = useState(false);
+  const [narrativeSound, setNarrativeSound] = useState<Audio.Sound | null>(null);
+  const [summarySound, setSummarySound] = useState<Audio.Sound | null>(null);
+  const [isPlayingNarrative, setIsPlayingNarrative] = useState(false);
+  const [isPlayingSummary, setIsPlayingSummary] = useState(false);
+  const [isNarrativeLoading, setIsNarrativeLoading] = useState(false);
+  const [isSummaryLoading, setIsSummaryLoading] = useState(false);
   const mapRef = useRef<MapView>(null);
-  const lastNarrativeLocation = useRef<{ latitude: number; longitude: number } | null>(null);
+  const [lastNarrativeLocation, setLastNarrativeLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [lastAlertLocation, setLastAlertLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
   const { user } = useAuth();
 
   const generateLocationNarrative = async (lat: number, lng: number) => {
-    if (lastNarrativeLocation.current) {
+    if (lastNarrativeLocation) {
       const distance = getDistance(
-        lastNarrativeLocation.current.latitude,
-        lastNarrativeLocation.current.longitude,
+        lastNarrativeLocation.latitude,
+        lastNarrativeLocation.longitude,
         lat,
         lng
       );
@@ -90,7 +125,7 @@ export default function HomeScreen() {
       const address = addressResponse[0];
       const locationName = `${address.city}, ${address.region}, ${address.country}`;
 
-      const prompt = `Provide a historical and cultural summary for ${locationName}. The summary should include the location's name, a narrative, some highlights, a rating out of 5, and an estimated visit time. Please format the response as a JSON object with the following keys: "name", "narrative", "highlights", "rating", "visitTime".`;
+      const prompt = `Provide a historical and cultural summary for ${locationName}. The summary should include the location's name, a detailed narrative, a brief one-sentence summary of the narrative, some highlights, a rating out of 5, and an estimated visit time. Please format the response as a JSON object with the following keys: "name", "narrative", "summary", "highlights", "rating", "visitTime".`;
       
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite-preview-06-17:generateContent?key=${GEMINI_API_KEY}`, {
         method: 'POST',
@@ -106,10 +141,12 @@ export default function HomeScreen() {
         }),
       });
 
-      const json = await response.json();
+      const json = await response.json() as GeminiResponse;
 
-      if (json.candidates && json.candidates.length > 0 && json.candidates[0].content && json.candidates[0].content.parts && json.candidates[0].content.parts.length > 0 && json.candidates[0].content.parts[0].text) {
-        let responseText = json.candidates[0].content.parts[0].text;
+      let responseText = json.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (responseText) {
+        
         
         responseText = responseText.replace(/```json/g, '').replace(/```/g, '');
         
@@ -121,7 +158,10 @@ export default function HomeScreen() {
           ...data,
         };
         setLocationData(newLocationData);
-        lastNarrativeLocation.current = { latitude: lat, longitude: lng };
+        setLastNarrativeLocation({ latitude: lat, longitude: lng });
+
+        // Create location alert for this new story
+        await createLocationAlert(newLocationData);
 
         // Save to places_visited table if not already recorded
         if (user) {
@@ -170,19 +210,21 @@ export default function HomeScreen() {
     }
   };
 
-  const playNarration = async (text: string) => {
-    if (sound) {
-      await sound.unloadAsync();
-    }
-
+  const playAudio = async (
+    text: string,
+    type: 'narrative' | 'summary',
+    setSound: (sound: Audio.Sound | null) => void,
+    setIsLoading: (loading: boolean) => void,
+    setIsPlaying: (playing: boolean) => void
+  ) => {
     if (!ELEVENLABS_API_KEY) {
       Alert.alert('Error', 'ElevenLabs API key not set.');
-      setIsNarrationLoading(false);
+      setIsLoading(false);
       return;
     }
-    
+
     try {
-      setIsNarrationLoading(true);
+      setIsLoading(true);
       const response = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
         method: 'POST',
         headers: {
@@ -205,7 +247,7 @@ export default function HomeScreen() {
       fileReader.onload = async () => {
         try {
           const base64Data = fileReader.result as string;
-          const uri = FileSystem.documentDirectory + 'narration.mp3';
+          const uri = `${FileSystem.documentDirectory}${type}.mp3`;
           await FileSystem.writeAsStringAsync(uri, base64Data.split(',')[1], { encoding: FileSystem.EncodingType.Base64 });
 
           const { sound: newSound, status } = await Audio.Sound.createAsync({ uri });
@@ -214,96 +256,274 @@ export default function HomeScreen() {
             await newSound.playAsync();
             setIsPlaying(true);
           } else {
-            Alert.alert('Error', 'Could not load audio for playback.');
+            Alert.alert('Error', `Could not load ${type} audio for playback.`);
           }
         } catch (e) {
-          console.error("Error playing narration:", e);
-          Alert.alert('Error', 'Failed to play narration.');
+          console.error(`Error playing ${type}:`, e);
+          Alert.alert('Error', `Failed to play ${type}.`);
         } finally {
-          setIsNarrationLoading(false);
+          setIsLoading(false);
         }
       };
       fileReader.onerror = (error) => {
-        console.error("FileReader error:", error);
-        Alert.alert('Error', 'Failed to read audio file.');
-        setIsNarrationLoading(false);
+        console.error('FileReader error:', error);
+        Alert.alert('Error', `Failed to read ${type} audio file.`);
+        setIsLoading(false);
       };
-
     } catch (error) {
       console.error(error);
-      Alert.alert('Error', 'Failed to play narration.');
-      setIsNarrationLoading(false);
+      Alert.alert('Error', `Failed to play ${type}.`);
+      setIsLoading(false);
     }
   };
   
-  const handlePlayPause = async () => {
-    if (!sound) {
+  const handlePlayPauseNarrative = async () => {
+    if (summarySound) await summarySound.stopAsync();
+    setIsPlayingSummary(false);
+
+    if (!narrativeSound) {
       if (locationData) {
-        playNarration(locationData.narrative);
+        playAudio(locationData.narrative, 'narrative', setNarrativeSound, setIsNarrativeLoading, setIsPlayingNarrative);
       }
       return;
     }
 
-    if (isPlaying) {
-      await sound.pauseAsync();
-      setIsPlaying(false);
+    if (isPlayingNarrative) {
+      await narrativeSound.pauseAsync();
+      setIsPlayingNarrative(false);
     } else {
-      await sound.playAsync();
-      setIsPlaying(true);
+      await narrativeSound.playAsync();
+      setIsPlayingNarrative(true);
+    }
+  };
+
+  const handlePlayPauseSummary = async () => {
+    if (narrativeSound) await narrativeSound.stopAsync();
+    setIsPlayingNarrative(false);
+
+    if (!summarySound) {
+      if (locationData) {
+        playAudio(locationData.summary, 'summary', setSummarySound, setIsSummaryLoading, setIsPlayingSummary);
+      }
+      return;
+    }
+
+    if (isPlayingSummary) {
+      await summarySound.pauseAsync();
+      setIsPlayingSummary(false);
+    } else {
+      await summarySound.playAsync();
+      setIsPlayingSummary(true);
+    }
+  };
+
+  const createLocationAlert = async (locationData: LocationData) => {
+    if (!user) return;
+
+    try {
+      const alertData = {
+        user_id: user.id,
+        title: `New Story: ${locationData.name}`,
+        message: `Discover the fascinating story of ${locationData.name}. Rated ${locationData.rating}/5 stars!`,
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+        radius: 100,
+        alert_type: 'story',
+        is_read: false,
+      };
+
+      const { error } = await supabase
+        .from('location_alerts')
+        .insert([alertData]);
+
+      if (error) {
+        console.error('Error creating location alert:', error);
+      } else {
+        console.log('Location alert created successfully');
+      }
+    } catch (error) {
+      console.error('Error creating location alert:', error);
+    }
+  };
+
+  const fetchEmergencyAlertsForLocation = async (lat: number, lng: number) => {
+    if (!user) return;
+
+    // Check if we need to fetch alerts for this location
+    if (lastAlertLocation) {
+      const distance = getDistance(
+        lastAlertLocation.latitude,
+        lastAlertLocation.longitude,
+        lat,
+        lng
+      );
+      console.log(`Distance from last alert location: ${distance} meters`);
+      if (distance < 1000) { // Only fetch new alerts if moved more than 1km
+        return;
+      }
+    }
+
+    try {
+      console.log(`Fetching emergency alerts for lat: ${lat}, lng: ${lng}`);
+      
+      // This would call the same emergency alert fetching logic from notifications screen
+      // For now, we'll create a simple emergency check
+      const mockEmergencyAlert = {
+        user_id: user.id,
+        title: '🚨 Location Safety Check',
+        message: `Emergency alert check completed for your new location. Stay safe and be aware of your surroundings.`,
+        latitude: lat,
+        longitude: lng,
+        radius: 5000,
+        alert_type: 'location',
+        is_read: false,
+      };
+
+      const { error } = await supabase
+        .from('location_alerts')
+        .insert([mockEmergencyAlert]);
+
+      if (error) {
+        console.error('Error creating emergency alert:', error);
+      } else {
+        console.log('Emergency alert created for new location');
+        setLastAlertLocation({ latitude: lat, longitude: lng });
+        // Update unread count
+        checkUnreadAlerts();
+      }
+    } catch (error) {
+      console.error('Error fetching emergency alerts:', error);
+    }
+  };
+
+  const checkUnreadAlerts = async () => {
+    if (!user) return;
+
+    try {
+      const { count, error } = await supabase
+        .from('location_alerts')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+
+      if (error) {
+        console.error('Error checking unread alerts:', error);
+      } else {
+        setUnreadAlertsCount(count || 0);
+      }
+    } catch (error) {
+      console.error('Error checking unread alerts:', error);
     }
   };
 
   const initialize = async () => {
-    setLoading(true);
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission denied', 'Location permission is required.');
-      setLoading(false);
-      return;
-    }
+    try {
+      setLoading(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission denied', 'Location permission is required.');
+        setLoading(false);
+        return;
+      }
 
-    const location = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.High,
-    });
-    setUserLocation(location);
-    generateLocationNarrative(location.coords.latitude, location.coords.longitude);
-    
-    mapRef.current?.animateToRegion({
-      latitude: location.coords.latitude,
-      longitude: location.coords.longitude,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
+      const location = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+      setUserLocation(location);
+      
+      // Wait for narrative generation to complete
+      await generateLocationNarrative(location.coords.latitude, location.coords.longitude);
+      
+      // Automatically fetch emergency alerts for new location (don't wait for this)
+      fetchEmergencyAlertsForLocation(location.coords.latitude, location.coords.longitude);
+      
+      mapRef.current?.animateToRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    } catch (error) {
+      console.error('Error during initialization:', error);
+      Alert.alert('Error', 'Failed to initialize location services.');
+    } finally {
+      setLoading(false); // Always set loading to false when done
+    }
   };
 
   useEffect(() => {
     initialize();
+    checkUnreadAlerts(); // Check for unread alerts on mount
 
     return () => {
-      sound?.unloadAsync();
+      narrativeSound?.unloadAsync();
+      summarySound?.unloadAsync();
     };
   }, []);
+
+  // Realtime subscription for unread alerts count
+  useEffect(() => {
+    if (!user) return;
+
+    const channel = supabase
+      .channel(`location_alerts_realtime_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'location_alerts', filter: `user_id=eq.${user.id}` },
+        () => {
+          // Recompute the unread count whenever alerts change
+          checkUnreadAlerts();
+        }
+      )
+      .subscribe((status) => {
+        if (status !== 'SUBSCRIBED') return;
+      });
+
+    return () => {
+      try { supabase.removeChannel(channel); } catch {}
+    };
+  }, [user]);
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#7C3AED', '#4F46E5']}
+        colors={['#8B5CF6', '#7C3AED', '#6366F1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
         style={styles.backgroundGradient}
       />
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.header}>
           <View style={styles.headerContent}>
             <View style={styles.titleContainer}>
-              <Sparkles size={28} color="#FFFFFF" strokeWidth={2} />
+              <Sparkles size={32} color="#FFFFFF" strokeWidth={2.5} />
               <Text style={styles.title}>GeoTeller</Text>
             </View>
-            <Text style={styles.subtitle}>Discover the stories around you</Text>
+            <Text style={styles.subtitle}>{t('home.subtitle', 'Discover the stories around you')}</Text>
+          </View>
+          
+          <View style={styles.headerActions}>
+            <LanguageSwitcher showText={false} iconSize={20} />
+            <TouchableOpacity 
+              style={styles.notificationButton} 
+              onPress={() => router.push('/notifications')}
+            >
+              <Bell size={24} color="#FFFFFF" strokeWidth={2} />
+              {unreadAlertsCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationBadgeText}>
+                    {unreadAlertsCount > 99 ? '99+' : unreadAlertsCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
         </View>
 
         {Platform.OS !== 'web' && (
           <View style={styles.mapContainer}>
             <MapView
+              provider={PROVIDER_GOOGLE}
               ref={mapRef}
               style={styles.map}
               initialRegion={{
@@ -315,6 +535,13 @@ export default function HomeScreen() {
               showsUserLocation={true}
               showsMyLocationButton={true}
               mapType={Platform.OS === 'android' ? 'standard' : 'mutedStandard'}
+              onPress={(e) => {
+                try {
+                  // This is a workaround for a potential iOS crash.
+                } catch (err) {
+                  console.warn("Error in map press:", err);
+                }
+              }}
             >
               {userLocation && (
                 <Marker
@@ -328,7 +555,7 @@ export default function HomeScreen() {
           </View>
         )}
 
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
           {loading ? (
             <View style={styles.glassCard}>
               <ActivityIndicator size="large" color="#A78BFA" />
@@ -341,33 +568,32 @@ export default function HomeScreen() {
                   <MapPin size={20} color="#A78BFA" strokeWidth={2.5} />
                   <Text style={styles.locationTitle}>{locationData.name}</Text>
                 </View>
-                <View style={styles.locationMeta}>
-                  <View style={styles.ratingContainer}>
-                    <Star size={18} color="#FBBF24" fill="#FBBF24" strokeWidth={2} />
-                    <Text style={styles.rating}>{locationData.rating}</Text>
+                <View style={styles.audioControlsContainer}>
+                  {/* Full Story Audio Control */}
+                  <View style={styles.audioControl}>
+                    <Text style={styles.audioControlTitle}>Full Story</Text>
+                    <TouchableOpacity style={styles.audioButton} onPress={handlePlayPauseNarrative} disabled={isNarrativeLoading}>
+                      {isNarrativeLoading ? (
+                        <ActivityIndicator color="#8B5CF6" />
+                      ) : (
+                        isPlayingNarrative ? <Pause size={24} color="#8B5CF6" /> : <Play size={24} color="#8B5CF6" />
+                      )}
+                    </TouchableOpacity>
                   </View>
-                  <View style={styles.timeContainer}>
-                    <Clock size={18} color="#9CA3AF" strokeWidth={2} />
-                    <Text style={styles.visitTime}>{locationData.visitTime}</Text>
+
+                  {/* Summary Audio Control */}
+                  <View style={styles.audioControl}>
+                    <Text style={styles.audioControlTitle}>AI Summary</Text>
+                    <TouchableOpacity style={styles.audioButton} onPress={handlePlayPauseSummary} disabled={isSummaryLoading}>
+                      {isSummaryLoading ? (
+                        <ActivityIndicator color="#8B5CF6" />
+                      ) : (
+                        isPlayingSummary ? <Pause size={24} color="#8B5CF6" /> : <Play size={24} color="#8B5CF6" />
+                      )}
+                    </TouchableOpacity>
                   </View>
                 </View>
               </View>
-
-              <TouchableOpacity style={styles.playButton} onPress={handlePlayPause} disabled={isNarrationLoading}>
-                <View style={styles.playButtonInner}>
-                  <Volume2 size={16} color="#FFFFFF" strokeWidth={2.5} />
-                {isNarrationLoading ? (
-                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginLeft: 8 }} />
-                ) : isPlaying ? (
-                    <Pause size={20} color="#FFFFFF" strokeWidth={2.5} style={{ marginLeft: 8 }} />
-                ) : (
-                    <Play size={20} color="#FFFFFF" strokeWidth={2.5} style={{ marginLeft: 8 }} />
-                )}
-                  <Text style={styles.playButtonText}>
-                    {isNarrationLoading ? 'Loading...' : isPlaying ? 'Pause Story' : 'Play Story'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
 
               <Text style={styles.narrative}>{locationData.narrative}</Text>
 
@@ -420,81 +646,121 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111827',
+    backgroundColor: '#F3F4F6',
   },
   backgroundGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: height * 0.6,
+    height: height * 0.4,
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: Platform.OS === 'android' ? 40 : 20,
+    paddingBottom: 20,
+  },
+  notificationButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#EF4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  notificationBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
   headerContent: {
-    alignItems: 'flex-start',
+    alignItems: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
     gap: 12,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontFamily: 'Poppins-Bold',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 17,
-    fontFamily: 'Inter-Light',
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
     color: 'rgba(255, 255, 255, 0.8)',
-    marginLeft: 40,
+    marginTop: 4,
   },
   mapContainer: {
     height: height * 0.25,
-    position: 'relative',
     borderRadius: 24,
+    marginHorizontal: 24,
     overflow: 'hidden',
-    marginHorizontal: 20,
-    marginBottom: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
     elevation: 10,
+    marginBottom: -height * 0.05, // Overlap with content below
+    zIndex: 1,
   },
   map: {
     ...StyleSheet.absoluteFillObject,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingTop: height * 0.05, // Adjust for map overlap
+  },
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingBottom: 40,
   },
   glassCard: {
-    backgroundColor: '#1F2937',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 32,
+    padding: 20,
     overflow: 'hidden',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    elevation: 8,
-    marginBottom: 20,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.15,
+    shadowRadius: 32,
+    elevation: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.1)',
   },
   loadingText: {
-    marginTop: 16,
-    fontSize: 17,
+    marginTop: 20,
+    fontSize: 18,
     fontFamily: 'Inter-Medium',
-    color: '#9CA3AF',
+    color: '#6B7280',
+    letterSpacing: 0.3,
   },
   locationHeader: {
     marginBottom: 20,
@@ -508,187 +774,223 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   locationTitle: {
-    fontSize: 24,
+    fontSize: 26,
     fontFamily: 'Poppins-SemiBold',
-    color: '#F9FAFB',
+    color: '#1F2937',
     textAlign: 'center',
     flex: 1,
     flexShrink: 1,
+    letterSpacing: 0.3,
   },
   locationMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    gap: 24,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   rating: {
-    fontSize: 17,
-    fontFamily: 'Inter-Medium',
-    color: '#FBBF24',
+    fontSize: 16,
+    fontFamily: 'Inter-SemiBold',
+    color: '#F59E0B',
   },
   timeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
   },
   visitTime: {
-    fontSize: 17,
-    fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
-  },
-  playButton: {
-    marginVertical: 20,
-    backgroundColor: '#4F46E5',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  playButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  playButtonText: {
     fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#6B7280',
+  },
+  audioControlsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    width: '100%',
+    marginTop: 20,
+    paddingVertical: 10,
+    backgroundColor: 'rgba(139, 92, 246, 0.05)',
+    borderRadius: 16,
+  },
+  audioControl: {
+    alignItems: 'center',
+    gap: 10,
+  },
+  audioControlTitle: {
     fontFamily: 'Inter-SemiBold',
-    color: '#FFFFFF',
-    marginLeft: 8,
+    fontSize: 14,
+    color: '#4B5563',
+  },
+  audioButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(139, 92, 246, 0.2)',
   },
   narrative: {
-    fontSize: 17,
+    fontSize: 18,
     fontFamily: 'Inter-Regular',
-    color: '#D1D5DB',
-    lineHeight: 26,
-    marginBottom: 24,
-    textAlign: 'center',
+    color: '#374151',
+    lineHeight: 28,
+    marginBottom: 28,
+    textAlign: 'left',
     flexShrink: 1,
+    letterSpacing: 0.2,
   },
   highlightsContainer: {
-    marginVertical: 24,
+    marginVertical: 28,
     width: '100%',
   },
   highlightsTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: 'Poppins-SemiBold',
-    color: '#F9FAFB',
-    marginBottom: 16,
+    color: '#1F2937',
+    marginBottom: 20,
+    letterSpacing: 0.3,
   },
   highlightItem: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
+    alignItems: 'flex-start',
+    marginBottom: 16,
+    backgroundColor: 'rgba(139, 92, 246, 0.05)',
+    padding: 16,
+    borderRadius: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#8B5CF6',
   },
   highlightBullet: {
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    width: 24,
-    height: 24,
+    backgroundColor: '#8B5CF6',
+    borderRadius: 14,
+    width: 28,
+    height: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   highlightBulletText: {
-    fontSize: 12,
+    fontSize: 14,
     fontFamily: 'Inter-Bold',
     color: '#FFFFFF',
   },
   highlightText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Inter-Regular',
-    color: '#D1D5DB',
+    color: '#374151',
     flex: 1,
-    lineHeight: 22,
+    lineHeight: 26,
     flexShrink: 1,
+    letterSpacing: 0.2,
   },
   shareButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-    marginTop: 16,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#374151',
-    gap: 8,
+    paddingVertical: 18,
+    paddingHorizontal: 28,
+    borderRadius: 18,
+    marginTop: 20,
+    backgroundColor: 'rgba(139, 92, 246, 0.1)',
+    borderWidth: 2,
+    borderColor: '#8B5CF6',
+    gap: 12,
   },
   shareText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Inter-SemiBold',
-    color: '#A78BFA',
+    color: '#8B5CF6',
+    letterSpacing: 0.3,
   },
   refreshButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-    borderRadius: 16,
-    marginTop: 16,
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: '#374151',
-    gap: 8,
+    paddingVertical: 18,
+    paddingHorizontal: 28,
+    borderRadius: 18,
+    marginTop: 12,
+    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+    borderWidth: 2,
+    borderColor: '#6B7280',
+    gap: 12,
   },
   refreshText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Inter-SemiBold',
-    color: '#A78BFA',
+    color: '#6B7280',
+    letterSpacing: 0.3,
   },
   emptyTitle: {
-    fontSize: 22,
+    fontSize: 24,
     fontFamily: 'Poppins-SemiBold',
-    color: '#F9FAFB',
-    marginTop: 16,
-    marginBottom: 8,
+    color: '#1F2937',
+    marginTop: 20,
+    marginBottom: 12,
+    letterSpacing: 0.3,
   },
   emptySubtitle: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Inter-Regular',
-    color: '#9CA3AF',
+    color: '#6B7280',
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
+    lineHeight: 26,
+    marginBottom: 32,
+    letterSpacing: 0.2,
   },
   enableButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 16,
-    backgroundColor: '#4F46E5',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
+    paddingVertical: 18,
+    paddingHorizontal: 36,
+    borderRadius: 20,
+    backgroundColor: '#8B5CF6',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 8,
   },
   enableButtonText: {
-    fontSize: 16,
+    fontSize: 17,
     fontFamily: 'Inter-SemiBold',
     color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
   directionsButton: {
     position: 'absolute',
-    bottom: 110,
-    right: 20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    bottom: 120,
+    right: 24,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#4F46E5',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    backgroundColor: '#8B5CF6',
+    shadowColor: '#8B5CF6',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 15,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
 });

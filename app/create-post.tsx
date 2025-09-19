@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,43 +9,124 @@ import {
   Alert,
   ScrollView,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Image as ImageIcon, Video, Type } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 import { supabase } from '@/lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Video as ExpoVideo, ResizeMode } from 'expo-av';
+import { Video as ExpoVideo, ResizeMode, Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import { Video as VideoCompressor } from 'react-native-compressor';
 
+// Configure audio for iOS to play in silent mode
+if (Platform.OS === 'ios') {
+  Audio.setAudioModeAsync({
+    playsInSilentModeIOS: true,
+  });
+}
+
 export default function CreatePost() {
+
   const router = useRouter();
   const [postType, setPostType] = useState<'text' | 'image' | 'video'>('text');
   const [text, setText] = useState('');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [userLocation, setUserLocation] = useState<string | null>(null);
+
+  // Automatically capture user location when component mounts
+  useEffect(() => {
+    const captureLocation = async () => {
+      try {
+        // Request location permissions
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.log('Location permission denied');
+          return;
+        }
+
+        // Get current location
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+
+        // Reverse geocode to get address
+        const reverseGeocode = await Location.reverseGeocodeAsync({
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+        });
+
+        if (reverseGeocode && reverseGeocode.length > 0) {
+          const address = reverseGeocode[0];
+          const locationString = `${address.city || address.subregion || address.region}, ${address.country}`;
+          setUserLocation(locationString);
+          console.log('Location captured:', locationString);
+        }
+      } catch (error) {
+        console.error('Error capturing location:', error);
+      }
+    };
+
+    captureLocation();
+  }, []);
 
   const handleMediaPick = async (type: 'image' | 'video') => {
-    const mediaType =
-      type === 'image'
-        ? ImagePicker.MediaTypeOptions.Images
-        : ImagePicker.MediaTypeOptions.Videos;
+    const mediaTypeOption = type === 'image' ? ImagePicker.MediaTypeOptions.Images : ImagePicker.MediaTypeOptions.Videos;
+    const action = type === 'image' ? 'Photo' : 'Video';
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: mediaType,
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setMediaUri(result.assets[0].uri);
-    }
+    Alert.alert(
+      `Add a ${action}`,
+      `Choose an option`,
+      [
+        {
+          text: `Take ${action}`,
+          onPress: async () => {
+            const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
+            if (cameraPermission.status !== 'granted') {
+              Alert.alert('Permission needed', `Camera permission is required to take a ${type}.`);
+              return;
+            }
+            const result = await ImagePicker.launchCameraAsync({
+              mediaTypes: mediaTypeOption,
+              quality: 1,
+            });
+            if (!result.canceled) {
+              setMediaUri(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: `Choose from Library`,
+          onPress: async () => {
+            const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+            if (libraryPermission.status !== 'granted') {
+                Alert.alert('Permission needed', `Media library permission is required to choose a ${type}.`);
+                return;
+            }
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: mediaTypeOption,
+              quality: 1,
+            });
+            if (!result.canceled) {
+              setMediaUri(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handlePost = async () => {
     if (!text.trim() && !mediaUri) {
-
       Alert.alert('Error', 'Please add some content to your post.');
       return;
     }
@@ -104,6 +185,7 @@ export default function CreatePost() {
             content: text,
             media_url: mediaUrl,
             media_type: postType,
+            location: userLocation,
             user_id: user?.id,
           },
         ]);
@@ -282,5 +364,3 @@ const styles = StyleSheet.create({
     fontFamily: 'Poppins-SemiBold',
   },
 });
-
-

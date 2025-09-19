@@ -5,16 +5,17 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { ModernAlert } from '@/utils/modernAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthError } from '@supabase/supabase-js';
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -29,31 +30,31 @@ export default function SignUpScreen() {
 
   const handleSignUp = async () => {
     if (!fullName || !email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      ModernAlert.error('Error', 'Please fill in all fields');
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      ModernAlert.error('Error', 'Passwords do not match');
       return;
     }
 
     if (password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters');
+      ModernAlert.error('Error', 'Password must be at least 6 characters');
       return;
     }
 
     setLoading(true);
-    const { error } = await signUp(email, password, fullName);
+    const { error }: { error: AuthError | null } = await signUp(email, password, fullName);
     setLoading(false);
 
     if (error) {
-      Alert.alert('Sign Up Failed', error.message);
+      ModernAlert.error('Sign Up Failed', error.message);
     } else {
-      Alert.alert(
+      ModernAlert.success(
         'Success',
         'Account created successfully! Please check your email to verify your account.',
-        [{ text: 'OK', onPress: () => router.replace('/(auth)/sign-in') }]
+        () => router.replace('/(auth)/sign-in')
       );
     }
   };

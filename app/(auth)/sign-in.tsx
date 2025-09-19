@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
+import Constants from 'expo-constants';
 import {
   View,
   Text,
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { ModernAlert } from '@/utils/modernAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
+import { debugAuth, clearAuthStorage } from '@/utils/authDebug';
 
 export default function SignInScreen() {
   const router = useRouter();
@@ -26,18 +28,44 @@ export default function SignInScreen() {
 
   const handleSignIn = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields');
+      ModernAlert.error('Error', 'Please fill in all fields');
       return;
     }
 
     setLoading(true);
-    const { error } = await signIn(email, password);
-    setLoading(false);
-
-    if (error) {
-      Alert.alert('Sign In Failed', error.message);
-    } else {
-      router.replace('/(tabs)');
+    try {
+      console.log('Sign-in attempt starting for:', email);
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        let errorMessage = 'An error occurred during sign in. Please try again.';
+        
+        // Provide more specific error messages based on the error code or message
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please try again.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Please verify your email before signing in.';
+        } else if (error.message.includes('network') || error.message.includes('fetch')) {
+          errorMessage = 'Network error. Please check your internet connection.';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = 'Too many sign-in attempts. Please wait a moment and try again.';
+        }
+        
+        console.warn('Sign-in failed:', { email, error: error.message });
+        ModernAlert.error('Sign In Failed', errorMessage);
+      } else {
+        console.log('Sign-in successful, redirecting to tabs');
+        router.replace('/(tabs)');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      console.error('Unexpected error during sign in:', errorMessage);
+      ModernAlert.error(
+        'Error',
+        'An unexpected error occurred. Please try again.'
+      );
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -124,6 +152,24 @@ export default function SignInScreen() {
                   <Text style={styles.signUpLink}>Sign Up</Text>
                 </TouchableOpacity>
               </View>
+
+              {__DEV__ && (
+                <View style={styles.debugContainer}>
+                  <Text style={styles.debugTitle}>Debug Tools</Text>
+                  <TouchableOpacity
+                    style={styles.debugButton}
+                    onPress={debugAuth}
+                  >
+                    <Text style={styles.debugButtonText}>Debug Auth</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.debugButton}
+                    onPress={clearAuthStorage}
+                  >
+                    <Text style={styles.debugButtonText}>Clear Storage</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -246,5 +292,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'Inter-SemiBold',
     color: '#6366F1',
+  },
+  debugContainer: {
+    marginTop: 24,
+    padding: 16,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  debugTitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-SemiBold',
+    color: '#DC2626',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  debugButton: {
+    backgroundColor: '#DC2626',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  debugButtonText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
+    textAlign: 'center',
   },
 });

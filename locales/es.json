@@ -1,0 +1,82 @@
+{
+  "badges": {
+    "title": "Insignias",
+    "earnedBadges": "Insignias Ganadas",
+    "availableBadges": "Insignias Disponibles",
+    "noEarnedBadges": "Aún no hay insignias ganadas",
+    "noAvailableBadges": "No hay insignias disponibles",
+    "earnedOn": "Ganada el",
+    "progress": "Progreso",
+    "rarity": {
+      "common": "Común",
+      "rare": "Rara",
+      "epic": "Épica",
+      "legendary": "Legendaria"
+    },
+    "categories": {
+      "exploration": "Exploración",
+      "social": "Social",
+      "achievement": "Logro",
+      "special": "Especial"
+    }
+  },
+  "navigation": {
+    "back": "Atrás",
+    "home": "Inicio",
+    "profile": "Perfil",
+    "settings": "Configuración",
+    "search": "Buscar"
+  },
+  "common": {
+    "loading": "Cargando...",
+    "error": "Error",
+    "retry": "Reintentar",
+    "cancel": "Cancelar",
+    "save": "Guardar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "share": "Compartir",
+    "close": "Cerrar",
+    "yes": "Sí",
+    "no": "No",
+    "ok": "OK"
+  },
+  "chat": {
+    "messages": "Mensajes",
+    "typeMessage": "Escribe un mensaje...",
+    "send": "Enviar",
+    "online": "En línea",
+    "offline": "Desconectado",
+    "lastSeen": "Visto por última vez",
+    "newMessage": "Nuevo mensaje"
+  },
+  "events": {
+    "title": "Eventos",
+    "createEvent": "Crear Evento",
+    "joinEvent": "Unirse al Evento",
+    "eventDetails": "Detalles del Evento",
+    "upcoming": "Próximos",
+    "past": "Pasados"
+  },
+  "groups": {
+    "title": "Grupos",
+    "createGroup": "Crear Grupo",
+    "joinGroup": "Unirse al Grupo",
+    "myGroups": "Mis Grupos",
+    "groupDetails": "Detalles del Grupo"
+  },
+  "settings": {
+    "title": "Configuración",
+    "language": "Idioma",
+    "notifications": "Notificaciones",
+    "privacy": "Privacidad",
+    "account": "Cuenta",
+    "about": "Acerca de",
+    "logout": "Cerrar sesión",
+    "changeLanguage": "Cambiar idioma"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español"
+  }
+}

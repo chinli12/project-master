@@ -7,9 +7,45 @@
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.geoteller",
+      "associatedDomains": [
+        "applinks:https://deycthvditigtcwtvals.supabase.co"
+      ],
+      "config": {
+        "googleMapsApiKey": "AIzaSyArQQgKA4uz4bwoz4l2THPNVCOlususLFc",
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.geoteller"
+            ]
+          }
+        ],
+        "NSLocationWhenInUseUsageDescription": "This app needs access to your location to discover nearby stories, provide directions, and offer relevant content.",
+        "NSCameraUsageDescription": "This app needs access to your camera to allow you to take photos and videos for posts and profile pictures.",
+        "NSPhotoLibraryUsageDescription": "This app needs access to your photo library to allow you to select images and videos for posts and profile pictures.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to record audio for video posts and voice notes.",
+        "NSPhotoLibraryAddUsageDescription": "This app needs access to your photo library to save photos and videos.",
+        "ITSAppUsesNonExemptEncryption": false,
+        "LSApplicationQueriesSchemes": [
+          "comgooglemaps",
+          "comgooglemaps-x-callback",
+          "comgooglemapsurl",
+          "com.googleusercontent.apps.*"
+        ],
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "This app needs access to your location to provide navigation and location-based features.",
+        "NSLocationAlwaysUsageDescription": "This app needs access to your location to provide navigation and location-based features.",
+        "UIBackgroundModes": [
+          "location",
+          "fetch"
+        ]
+      },
+      "usesIcloudStorage": true
     },
     "android": {
       "package": "com.geoteller",
@@ -27,7 +63,8 @@
         "android.permission.ACCESS_FINE_LOCATION",
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.CAMERA"
       ]
     },
     "web": {
@@ -44,16 +81,25 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-web-browser",
-      "expo-audio",
+      "expo-camera",
+      "expo-image-picker",
+      "expo-location",
       [
         "expo-build-properties",
         {
           "android": {
-            "minSdkVersion": 24
+            "minSdkVersion": 24,
+            "packagingOptions": {
+              "pickFirst": [
+                "**/libaosl.so"
+              ]
+            }
           }
         }
-      ]
+      ],
+      "expo-web-browser",
+      "react-native-compressor",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
@@ -63,31 +109,6 @@
       "eas": {
         "projectId": "f6a25cc0-4347-4470-9cfc-d90bbca09220"
       }
-    },
-    "android": {
-      "package": "com.geoteller",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyArQQgKA4uz4bwoz4l2THPNVCOlususLFc"
-        }
-      },
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#2c3e50"
-      },
-      "permissions": [
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ]
-    },
-    "splash": {
-      "image": "./assets/images/icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#2c3e50"
-    },
-    "backgroundColor": "#2c3e50"
+    }
   }
 }

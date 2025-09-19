@@ -43,6 +43,7 @@ import {
   ChevronDown,
   ChevronUp
 } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
@@ -1473,15 +1474,21 @@ export default function GroupDetailsScreen() {
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#8B5CF6', '#7C3AED', '#6366F1']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.backgroundGradient}
+      />
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header with back button */}
         <View style={styles.navigationHeader}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={24} color="#F9FAFB" />
+            <ChevronLeft size={28} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
           <Text style={styles.navigationTitle}>{group.name}</Text>
           <TouchableOpacity style={styles.headerMoreButton}>
-            <MoreHorizontal size={24} color="#F9FAFB" />
+            <MoreHorizontal size={24} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
         </View>
 
@@ -1496,29 +1503,43 @@ export default function GroupDetailsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F8FAFC',
+  },
+  backgroundGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 200,
   },
   navigationHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
   },
   backButton: {
-    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    padding: 12,
   },
   navigationTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1F2937',
+    fontSize: 22,
+    fontFamily: 'Poppins-Bold',
+    color: '#FFFFFF',
     flex: 1,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 0.3,
   },
   headerMoreButton: {
-    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    padding: 12,
   },
   headerContainer: {
     backgroundColor: '#FFFFFF',

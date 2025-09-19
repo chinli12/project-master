@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { View, StyleSheet, FlatList, Dimensions, Alert, ActivityIndicator, TouchableOpacity, Text } from 'react-native';
 import { supabase } from '../lib/supabase';
 import VideoPost from '../components/VideoPost';
@@ -26,12 +26,19 @@ export default function ReelsScreen() {
   const [loading, setLoading] = useState(true);
   const [activePostId, setActivePostId] = useState<string | null>(null);
   const router = useRouter();
+  const flatListRef = useRef<FlatList>(null);
 
-  const onViewableItemsChanged = useRef(({ viewableItems }: any) => {
-    if (viewableItems.length > 0) {
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+    if (viewableItems.length > 0 && viewableItems[0]?.item?.id) {
       setActivePostId(viewableItems[0].item.id);
     }
-  });
+  }, []);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 80,
+    minimumViewTime: 100,
+    waitForInteraction: false,
+  }).current;
 
   useEffect(() => {
     const fetchVideoPosts = async () => {
@@ -52,9 +59,14 @@ export default function ReelsScreen() {
     fetchVideoPosts();
   }, []);
 
+  // Move useCallback hook before any conditional returns
+  const memoizedOnViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: any[] }) => {
+    onViewableItemsChanged({ viewableItems });
+  }, [onViewableItemsChanged]);
+
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={[styles.container, styles.loadingContainer]}>
         <ActivityIndicator size="large" color="#A78BFA" />
       </View>
     );
@@ -63,17 +75,41 @@ export default function ReelsScreen() {
   return (
     <View style={styles.container}>
       <FlatList
+        ref={flatListRef}
         data={posts}
-        renderItem={({ item }) => <VideoPost post={item} isPlaying={item.id === activePostId} />}
         keyExtractor={(item) => item.id}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
+        renderItem={({ item }) => (
+          <View style={styles.videoContainer}>
+            <VideoPost
+              post={item}
+              isPlaying={activePostId === item.id}
+            />
+          </View>
+        )}
+        pagingEnabled={true}
+        snapToAlignment="start"
         snapToInterval={height}
         decelerationRate="fast"
-        onViewableItemsChanged={onViewableItemsChanged.current}
-        viewabilityConfig={{
-          itemVisiblePercentThreshold: 50,
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+        scrollEventThrottle={16}
+        onViewableItemsChanged={memoizedOnViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        onScrollToIndexFailed={info => {
+          const wait = new Promise(resolve => setTimeout(resolve, 500));
+          wait.then(() => {
+            flatListRef.current?.scrollToIndex({ index: info.index, animated: true });
+          });
         }}
+        initialNumToRender={1}
+        maxToRenderPerBatch={1}
+        windowSize={3}
+        removeClippedSubviews={false}
+        getItemLayout={(data, index) => ({
+          length: height,
+          offset: height * index,
+          index,
+        })}
       />
       <SafeAreaView style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
@@ -89,6 +125,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  videoContainer: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+    backgroundColor: '#000',
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -100,9 +144,16 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    padding: 20,
+    zIndex: 10,
+    paddingTop: 50,
+    paddingHorizontal: 15,
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

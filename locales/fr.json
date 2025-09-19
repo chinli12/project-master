@@ -1,0 +1,55 @@
+{
+  "badges": {
+    "title": "Badges",
+    "earnedBadges": "Badges Gagnés",
+    "availableBadges": "Badges Disponibles",
+    "noEarnedBadges": "Aucun badge gagné pour le moment",
+    "noAvailableBadges": "Aucun badge disponible",
+    "earnedOn": "Gagné le",
+    "progress": "Progrès",
+    "rarity": {
+      "common": "Commun",
+      "rare": "Rare",
+      "epic": "Épique",
+      "legendary": "Légendaire"
+    },
+    "categories": {
+      "exploration": "Exploration",
+      "social": "Social",
+      "achievement": "Réussite",
+      "special": "Spécial"
+    }
+  },
+  "navigation": {
+    "back": "Retour",
+    "home": "Accueil",
+    "profile": "Profil",
+    "settings": "Paramètres",
+    "search": "Rechercher"
+  },
+  "common": {
+    "loading": "Chargement...",
+    "error": "Erreur",
+    "retry": "Réessayer",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "share": "Partager",
+    "close": "Fermer",
+    "yes": "Oui",
+    "no": "Non",
+    "ok": "OK",
+    "complete": "Terminé"
+  },
+  "settings": {
+    "title": "Paramètres",
+    "language": "Langue",
+    "changeLanguage": "Changer de langue"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français"
+  }
+}

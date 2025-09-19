@@ -1,0 +1,97 @@
+{
+  "badges": {
+    "title": "Badges",
+    "earnedBadges": "Earned Badges",
+    "availableBadges": "Available Badges",
+    "noEarnedBadges": "No earned badges yet",
+    "noAvailableBadges": "No available badges",
+    "earnedOn": "Earned on",
+    "progress": "Progress",
+    "rarity": {
+      "common": "Common",
+      "rare": "Rare", 
+      "epic": "Epic",
+      "legendary": "Legendary"
+    },
+    "categories": {
+      "exploration": "Exploration",
+      "social": "Social",
+      "achievement": "Achievement",
+      "special": "Special"
+    }
+  },
+  "navigation": {
+    "back": "Back",
+    "home": "Home",
+    "profile": "Profile",
+    "settings": "Settings",
+    "search": "Search"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "edit": "Edit",
+    "share": "Share",
+    "close": "Close",
+    "yes": "Yes",
+    "no": "No",
+    "ok": "OK"
+  },
+  "chat": {
+    "messages": "Messages",
+    "typeMessage": "Type a message...",
+    "send": "Send",
+    "online": "Online",
+    "offline": "Offline",
+    "lastSeen": "Last seen",
+    "newMessage": "New message"
+  },
+  "events": {
+    "title": "Events",
+    "createEvent": "Create Event",
+    "joinEvent": "Join Event",
+    "eventDetails": "Event Details",
+    "upcoming": "Upcoming",
+    "past": "Past"
+  },
+  "groups": {
+    "title": "Groups",
+    "createGroup": "Create Group",
+    "joinGroup": "Join Group",
+    "myGroups": "My Groups",
+    "groupDetails": "Group Details"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "notifications": "Notifications",
+    "privacy": "Privacy",
+    "account": "Account",
+    "about": "About",
+    "logout": "Logout",
+    "changeLanguage": "Change Language"
+  },
+  "home": {
+    "subtitle": "Discover the stories around you"
+  },
+  "community": {
+    "title": "Community",
+    "subtitle": "Share your discoveries",
+    "stories": "Stories",
+    "groups": "Groups",
+    "events": "Events",
+    "reels": "Reels"
+  },
+  "languages": {
+    "en": "English",
+    "es": "Español",
+    "fr": "Français",
+    "de": "Deutsch",
+    "it": "Italiano",
+    "pt": "Português"
+  }
+}

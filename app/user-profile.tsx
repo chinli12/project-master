@@ -6,10 +6,10 @@ import {
   ScrollView,
   TouchableOpacity,
   Image,
-  Alert,
   Dimensions,
   ActivityIndicator,
 } from 'react-native';
+import { ModernAlert } from '@/utils/modernAlert';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { MessageSquare, UserPlus, ChevronLeft } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
@@ -61,6 +61,7 @@ export default function UserProfileScreen() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [placesVisited, setPlacesVisited] = useState<PlaceVisited[]>([]);
   const [placesLoading, setPlacesLoading] = useState(true);
+  const [messageLoading, setMessageLoading] = useState(false);
 
   // Effect to set user data from params or fetch from DB
   useEffect(() => {
@@ -72,7 +73,7 @@ export default function UserProfileScreen() {
           userId = userData.id;
         } catch (error) {
           console.error('Error parsing user data:', error);
-          Alert.alert('Error', 'Failed to load user profile');
+          ModernAlert.error('Error', 'Failed to load user profile');
           return;
         }
       }
@@ -109,7 +110,7 @@ export default function UserProfileScreen() {
           });
         } catch (error) {
           console.error('Error fetching user from DB:', error);
-          Alert.alert('Error', 'Failed to load user profile from database');
+          ModernAlert.error('Error', 'Failed to load user profile from database');
         }
       }
     };
@@ -119,11 +120,13 @@ export default function UserProfileScreen() {
 
   // Memoized function to check follow status
   const checkFollowStatus = useCallback(async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
-    if (!authUser || !user || authUser.id === user.id) {
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser || !user || authUser.id === user.id) {
       setIsFollowing(false);
       return;
     }
+
+    console.log('Checking follow status for:', { authUserId: authUser.id, targetUserId: user.id });
 
     const { data, error } = await supabase
       .from('followers')
@@ -132,11 +135,13 @@ export default function UserProfileScreen() {
       .eq('following_id', user.id)
       .single();
 
-    if (data) {
-      setIsFollowing(true);
-    } else {
-      setIsFollowing(false);
+    if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      console.error('Error checking follow status:', error);
     }
+
+    const following = !!data;
+    console.log('Follow status result:', { following, data });
+    setIsFollowing(following);
   }, [user]); // Depends on 'user' state
 
   // Memoized function to fetch follow counts
@@ -186,7 +191,7 @@ export default function UserProfileScreen() {
         console.log('Fetched places visited:', data); // Debug log
       } catch (error: any) {
         console.error('Error fetching places visited:', error.message);
-        Alert.alert('Error', 'Failed to fetch places visited.');
+        ModernAlert.error('Error', 'Failed to fetch places visited.');
         setPlacesVisited([]);
       } finally {
         setPlacesLoading(false);
@@ -224,7 +229,7 @@ export default function UserProfileScreen() {
       setPhotosShared(fetchedPhotos);
     } catch (error: any) {
       console.error('Error fetching user posts:', error.message);
-      Alert.alert('Error', 'Failed to fetch user photos.');
+      ModernAlert.error('Error', 'Failed to fetch user photos.');
       setPhotosShared([]);
     } finally {
       setPostsLoading(false);
@@ -250,45 +255,132 @@ export default function UserProfileScreen() {
   }
 
   const handleFollow = async () => {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+   // console.log('Follow button pressed'); // Debug log
+    //console.log('Current user state:', user);
+    //console.log('Current auth user:', currentUser);
+    
+    // Test database connection first
+    try {
+      const { data: testData, error: testError } = await supabase
+        .from('followers')
+        .select('count', { count: 'exact', head: true });
+      
+      console.log('Database test result:', { testData, testError });
+      
+      if (testError) {
+        console.error('Database connection test failed:', testError);
+        ModernAlert.error('Error', `Database connection failed: ${testError.message}`);
+        return;
+      }
+    } catch (dbError) {
+      console.error('Database test exception:', dbError);
+      ModernAlert.error('Error', 'Cannot connect to database');
+      return;
+    }
+    
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    
+    if (authError) {
+      console.error('Auth error:', authError);
+      ModernAlert.error('Error', 'Authentication failed');
+      return;
+    }
     
     if (!authUser) {
-      Alert.alert('Error', 'You need to be logged in to follow users');
+      ModernAlert.error('Error', 'You need to be logged in to follow users');
       return;
     }
 
-    if (!user || authUser.id === user.id) {
-      Alert.alert('Error', 'You cannot follow yourself or an invalid user.');
+    if (!user) {
+      console.error('Target user is null/undefined:', user);
+      ModernAlert.error('Error', 'User profile not loaded properly');
       return;
     }
 
+    if (!user.id) {
+      console.error('Target user ID is missing:', user);
+      ModernAlert.error('Error', 'User ID is missing');
+      return;
+    }
+
+    if (authUser.id === user.id) {
+      ModernAlert.error('Error', 'You cannot follow yourself.');
+      return;
+    }
+
+   
     setFollowLoading(true);
     try {
       if (isFollowing) {
-        const { error } = await supabase
+        console.log('Unfollowing user...');
+        const { error, count } = await supabase
           .from('followers')
           .delete()
-          .eq('follower_id', authUser.id) // Use authUser.id
-          .eq('following_id', user.id); // Use user.id
+          .eq('follower_id', authUser.id)
+          .eq('following_id', user.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error('Unfollow error:', error);
+          throw error;
+        }
+
+        console.log('Unfollow successful, deleted rows:', count);
         setIsFollowing(false);
-        setFollowersCount(prev => prev - 1);
+        setFollowersCount(prev => Math.max(0, prev - 1));
+        ModernAlert.success('Success', 'You are no longer following this user');
       } else {
-        const { error } = await supabase
+        console.log('Following user...');
+        console.log('Insert data:', {
+          follower_id: authUser.id,
+          following_id: user.id
+        });
+        
+        // First test if we can even select from the table
+        console.log('Testing table access...');
+        const { data: testSelect, error: selectError } = await supabase
+          .from('followers')
+          .select('*')
+          .limit(1);
+        
+        console.log('Table select test:', { testSelect, selectError });
+        
+        if (selectError) {
+          console.error('Cannot access followers table:', selectError);
+          throw new Error(`Table access denied: ${selectError.message || 'Unknown error'}`);
+        }
+        
+        console.log('Attempting insert...');
+        const insertResult = await supabase
           .from('followers')
           .insert({
-            follower_id: authUser.id, // Use authUser.id
-            following_id: user.id // Use user.id
-          });
+            follower_id: authUser.id,
+            following_id: user.id
+          })
+          .select();
 
-        if (error) throw error;
+        console.log('Full insert result:', insertResult);
+        const { error, data } = insertResult;
+
+        if (error) {
+          console.error('Follow error:', error);
+          console.error('Error details:', {
+            message: error.message,
+            code: error.code,
+            details: error.details,
+            hint: error.hint
+          });
+          throw error;
+        }
+
+        console.log('Follow successful, inserted:', data);
         setIsFollowing(true);
         setFollowersCount(prev => prev + 1);
+        ModernAlert.success('Success', 'You are now following this user');
       }
     } catch (error: any) {
       console.error('Error following/unfollowing:', error);
-      Alert.alert('Error', 'Failed to follow/unfollow user');
+      const errorMessage = error?.message || error?.error_description || 'Unknown error occurred';
+      ModernAlert.error('Error', `Failed to ${isFollowing ? 'unfollow' : 'follow'} user: ${errorMessage}`);
     } finally {
       setFollowLoading(false);
     }
@@ -303,8 +395,31 @@ export default function UserProfileScreen() {
   }
 
 
-  const handleMessage = () => {
-    Alert.alert('Message', 'Messaging feature will be implemented here.');
+  const handleMessage = async () => {
+    if (!user || !currentUser) {
+      ModernAlert.error('Error', 'Unable to start chat');
+      return;
+    }
+
+    setMessageLoading(true);
+    try {
+      // Import ChatService
+      const { ChatService } = await import('@/lib/chatService');
+      
+      // Create or get conversation
+      const conversationId = await ChatService.getOrCreateConversation(user.id);
+      
+      // Navigate to chat
+      router.push({
+        pathname: '/chat/[id]',
+        params: { id: conversationId }
+      });
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      ModernAlert.error('Error', 'Failed to start chat');
+    } finally {
+      setMessageLoading(false);
+    }
   };
 
   return (
@@ -316,7 +431,7 @@ export default function UserProfileScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <ChevronLeft size={28} color="#FFFFFF" />
+            <ChevronLeft size={28} color="#FFFFFF" strokeWidth={2.5} />
           </TouchableOpacity>
           <Text style={styles.title}>{user.full_name}</Text>
         </View>
@@ -355,9 +470,19 @@ export default function UserProfileScreen() {
                   </>
                 )}
               </TouchableOpacity>
-              <TouchableOpacity style={styles.messageButton} onPress={handleMessage}>
-                <MessageSquare size={20} color="#FFFFFF" strokeWidth={2.5} />
-                <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Message</Text>
+              <TouchableOpacity 
+                style={styles.messageButton} 
+                onPress={handleMessage}
+                disabled={messageLoading}
+              >
+                {messageLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <MessageSquare size={20} color="#FFFFFF" strokeWidth={2.5} />
+                    <Text style={[styles.actionButtonText, { color: '#FFFFFF' }]}>Message</Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           )}
@@ -384,7 +509,7 @@ export default function UserProfileScreen() {
             ) : placesVisited.length > 0 ? (
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {placesVisited.map(place => {
-                  console.log('Place image URL:', place.image_url); // Debug log
+                  //console.log('Place image URL:', place.image_url); // Debug log
                   return (
                     <View key={place.id} style={styles.placeCard}>
                   <Image source={place.image_url ? { uri: place.image_url } : PLACEHOLDER_IMAGE_URL} style={styles.placeImage} />
@@ -441,17 +566,24 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    backgroundColor: 'transparent',
   },
   backButton: {
-    padding: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 20,
+    padding: 12,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: 'Poppins-Bold',
-    color: '#1F2937',
+    color: '#FFFFFF',
     marginLeft: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+    letterSpacing: 0.3,
   },
   backgroundGradient: {
     position: 'absolute',
