@@ -5,35 +5,57 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Primary palette - Modern purples/violets
+        // Primary palette - Fresh green tones
         primary: {
-          50: '#F8FAFC',
-          100: '#F1F5F9',
-          500: '#8B5CF6',
-          600: '#7C3AED',
-          700: '#6D28D9',
-          800: '#5B21B6',
-          900: '#4C1D95',
+          50: '#F0FDF4',
+          100: '#DCFCE7',
+          200: '#BBF7D0',
+          300: '#86EFAC',
+          400: '#C1F99B',
+          500: '#8CCF44',
+          600: '#7AB83D',
+          700: '#6BA136',
+          800: '#5C8A2F',
+          900: '#4D7328',
         },
-        // Secondary palette - Refined blues
+        // Secondary palette - Warm orange tones
         secondary: {
-          50: '#EFF6FF',
-          100: '#DBEAFE',
-          500: '#3B82F6',
-          600: '#2563EB',
-          700: '#1D4ED8',
-          800: '#1E40AF',
-          900: '#1E3A8A',
-        },
-        // Accent palette - Warm coral/orange
-        accent: {
           50: '#FFF7ED',
           100: '#FFEDD5',
-          500: '#F97316',
+          200: '#FED7AA',
+          300: '#FDBA74',
+          400: '#FB923C',
+          500: '#F3A220',
           600: '#EA580C',
           700: '#C2410C',
           800: '#9A3412',
           900: '#7C2D12',
+        },
+        // Tertiary palette - Bright blue tones
+        tertiary: {
+          50: '#F0F9FF',
+          100: '#E0F2FE',
+          200: '#BAE6FD',
+          300: '#7DD3FC',
+          400: '#38BDF8',
+          500: '#1AAFF3',
+          600: '#0284C7',
+          700: '#0369A1',
+          800: '#075985',
+          900: '#0C4A6E',
+        },
+        // Light green accent
+        lightGreen: {
+          50: '#F7FEE7',
+          100: '#ECFCCB',
+          200: '#D9F99D',
+          300: '#C1F99B',
+          400: '#A3E635',
+          500: '#84CC16',
+          600: '#65A30D',
+          700: '#4D7C0F',
+          800: '#3F6212',
+          900: '#365314',
         },
         // Neutral palette - Refined grays
         neutral: {
@@ -56,14 +78,14 @@ module.exports = {
         },
         // Status colors
         success: {
-          500: '#10B981',
-          600: '#059669',
-          700: '#047857',
+          500: '#8CCF44',
+          600: '#7AB83D',
+          700: '#6BA136',
         },
         warning: {
-          500: '#F59E0B',
-          600: '#D97706',
-          700: '#B45309',
+          500: '#F3A220',
+          600: '#EA580C',
+          700: '#C2410C',
         },
         error: {
           500: '#EF4444',

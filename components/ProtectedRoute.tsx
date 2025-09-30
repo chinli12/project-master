@@ -13,8 +13,10 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     if (loading) return;
 
     const inAuthGroup = segments[0] === '(auth)';
+    const current = segments.join('/');
+    const isSplashFlow = current === '' || current === 'second-splash' || current === 'onboarding';
 
-    if (!user && !inAuthGroup) {
+    if (!user && !inAuthGroup && !isSplashFlow) {
       // Redirect to sign in if not authenticated
       router.replace('/(auth)/sign-in');
     } else if (user && inAuthGroup) {

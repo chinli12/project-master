@@ -86,6 +86,28 @@ function RootLayoutNav() {
                   contentStyle: { backgroundColor: '#F8FAFC' },
                 }}
               >
+                {/* Splash + onboarding flow */}
+                <Stack.Screen
+                  name="index"
+                  options={{
+                    animation: 'fade',
+                    animationDuration: 600,
+                  }}
+                />
+                <Stack.Screen
+                  name="second-splash"
+                  options={{
+                    animation: 'fade',
+                    animationDuration: 600,
+                  }}
+                />
+                <Stack.Screen
+                  name="onboarding"
+                  options={{
+                    animation: 'fade',
+                    animationDuration: 1200,
+                  }}
+                />
                 <Stack.Screen name="(auth)" />
                 <Stack.Screen name="(tabs)" />
                 {/* Ensure smooth transition and consistent background for Post Details */}
@@ -114,7 +136,7 @@ function RootLayoutNav() {
           </AuthProvider>
         </AlertProvider>
       </I18nextProvider>
-      <StatusBar style="auto" backgroundColor="#8B5CF6" />
+      <StatusBar style="dark" backgroundColor="transparent" translucent />
     </GestureHandlerRootView>
   );
 }

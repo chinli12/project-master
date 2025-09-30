@@ -56,7 +56,7 @@
       },
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
-        "backgroundColor": "#2c3e50"
+        "backgroundColor": "#F2F2F2"
       },
       "permissions": [
         "android.permission.ACCESS_COARSE_LOCATION",
@@ -75,9 +75,9 @@
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#2c3e50"
+      "backgroundColor": "#FFFFFF"
     },
-    "backgroundColor": "#2c3e50",
+    "backgroundColor": "#FFFFFF",
     "plugins": [
       "expo-router",
       "expo-font",

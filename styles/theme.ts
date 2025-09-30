@@ -1,18 +1,22 @@
 // Centralized theme tokens for colors, spacing, radii, and shadows
 export const colors = {
-  primary: '#8B5CF6',
-  primaryDark: '#7C3AED',
-  primaryDeep: '#6366F1',
+  primary: '#8CCF44',
+  primaryDark: '#7AB83D',
+  primaryDeep: '#6BA136',
+  secondary: '#F3A220',
+  tertiary: '#1AAFF3',
+  lightGreen: '#C1F99B',
   surface: '#FFFFFF',
   surfaceAlt: '#F8FAFC',
   textPrimary: '#1F2937',
   textSecondary: '#6B7280',
   textMuted: '#9CA3AF',
-  border: 'rgba(139, 92, 246, 0.10)',
+  border: 'rgba(140, 207, 68, 0.10)',
   overlay: 'rgba(0,0,0,0.6)',
-  success: '#10B981',
+  success: '#8CCF44',
   danger: '#EF4444',
-  info: '#3B82F6',
+  info: '#1AAFF3',
+  disabled: '#D1D5DB',
 };
 
 export const spacing = {
